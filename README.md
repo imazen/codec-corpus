@@ -101,6 +101,22 @@ Test images from the mozjpeg project for JPEG encoder/decoder testing.
 This corpus is fetched during optional Rust tests in [imageflow](https://github.com/imazen/imageflow) for codec quality calibration.
 
 ```bash
-# Clone for testing
+# Clone everything
 git clone https://github.com/imazen/codec-corpus.git
+```
+
+### Download a single dataset
+
+Use sparse checkout to download only the dataset you need:
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse \
+  https://github.com/imazen/codec-corpus.git
+cd codec-corpus
+git sparse-checkout set kodak        # or: pngsuite, CID22, mozjpeg, etc.
+```
+
+To add more datasets later:
+```bash
+git sparse-checkout add pngsuite
 ```
