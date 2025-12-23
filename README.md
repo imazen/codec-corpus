@@ -36,6 +36,10 @@ image-rs/
 pngsuite/
   LICENSE           # Freeware (Willem van Schaik)
   *.png             # 176 PNG conformance test images
+
+kodak/
+  LICENSE           # Unrestricted (Eastman Kodak)
+  *.png             # 24 classic test images (768x512)
 ```
 
 ## CID22
@@ -71,6 +75,14 @@ The official PNG conformance test suite by Willem van Schaik.
 - **Source**: http://www.schaik.com/pngsuite/
 - **License**: Freeware (free to use, copy, modify, distribute)
 - **Files**: 176 test images covering all PNG features (bit depths, color types, interlacing, transparency, gamma, etc.)
+
+## Kodak
+
+The classic Kodak Lossless True Color Image Suite, widely used as a standard benchmark for image compression research.
+
+- **Source**: http://r0k.us/graphics/kodak/
+- **License**: Unrestricted usage (released by Eastman Kodak Company)
+- **Files**: 24 uncompressed 768x512 PNG images
 
 ## Usage
 
