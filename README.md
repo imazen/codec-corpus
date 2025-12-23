@@ -40,6 +40,10 @@ pngsuite/
 kodak/
   LICENSE           # Unrestricted (Eastman Kodak)
   *.png             # 24 classic test images (768x512)
+
+mozjpeg/
+  LICENSE           # IJG + BSD
+  *.ppm, *.bmp, *.jpg, *.icc  # JPEG codec test files
 ```
 
 ## CID22
@@ -83,6 +87,14 @@ The classic Kodak Lossless True Color Image Suite, widely used as a standard ben
 - **Source**: http://r0k.us/graphics/kodak/
 - **License**: Unrestricted usage (released by Eastman Kodak Company)
 - **Files**: 24 uncompressed 768x512 PNG images
+
+## mozjpeg
+
+Test images from the mozjpeg project for JPEG encoder/decoder testing.
+
+- **Source**: https://github.com/mozilla/mozjpeg
+- **License**: IJG License + Modified BSD License
+- **Files**: PPM, BMP, JPG test images + ICC color profiles
 
 ## Usage
 
