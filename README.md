@@ -32,6 +32,10 @@ image-rs/
     png/            # PNG 16bpc, APNG, transparency (PNGsuite subset)
     tiff/           # TIFF compression/predictor tests
     webp/           # WebP lossless/lossy variants
+
+pngsuite/
+  LICENSE           # Freeware (Willem van Schaik)
+  *.png             # 176 PNG conformance test images
 ```
 
 ## CID22
@@ -60,9 +64,13 @@ Test images from the Rust image library for format conformance testing.
 - **License**: MIT
 - **test-images/**: Format edge cases, bit depths, compression modes, malformed files
 
-## Planned Additions
+## PNGSuite
 
-- **PNGSuite**: Standard PNG test images
+The official PNG conformance test suite by Willem van Schaik.
+
+- **Source**: http://www.schaik.com/pngsuite/
+- **License**: Freeware (free to use, copy, modify, distribute)
+- **Files**: 176 test images covering all PNG features (bit depths, color types, interlacing, transparency, gamma, etc.)
 
 ## Usage
 
