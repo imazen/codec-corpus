@@ -10,6 +10,17 @@ CID22/
   CID22-512/
     validation/     # 41 images - held out for validation
     training/       # 209 images - used for calibration
+
+zune/
+  LICENSE-MIT       # MIT OR Apache-2.0 OR Zlib
+  LICENSE-APACHE
+  LICENSE-ZLIB
+  test-images/
+    jpeg/           # 31 JPEG edge case images + benchmarks
+  fuzz-corpus/
+    jpeg/           # 1836 minimal fuzz test cases
+    png/            # PNG fuzz test cases
+    inflate/        # Compression fuzz test cases
 ```
 
 ## CID22
@@ -20,6 +31,15 @@ A subset of the CID22 (Compression Image Dataset 2022) resized to 512px on the l
 - **License**: CC BY-SA 4.0
 - **CID22-512/validation/**: Images from the official CID22 validation set
 - **CID22-512/training/**: Remaining images for model training/calibration
+
+## zune-image
+
+Test images and fuzz corpus from the zune-image project for decoder robustness testing.
+
+- **Source**: https://github.com/etemesi254/zune-image
+- **License**: MIT OR Apache-2.0 OR Zlib
+- **test-images/jpeg/**: JPEG edge cases (CMYK, progressive, unusual sampling factors, large dimensions)
+- **fuzz-corpus/**: Minimal test cases for crash/hang detection
 
 ## Planned Additions
 
