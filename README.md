@@ -21,6 +21,17 @@ zune/
     jpeg/           # 1836 minimal fuzz test cases
     png/            # PNG fuzz test cases
     inflate/        # Compression fuzz test cases
+
+image-rs/
+  LICENSE-MIT       # MIT
+  test-images/
+    bmp/            # BMP format variants + malformed files
+    gif/            # GIF animation tests
+    ico/            # Icon format tests
+    jpg/            # JPEG metadata/progressive tests
+    png/            # PNG 16bpc, APNG, transparency (PNGsuite subset)
+    tiff/           # TIFF compression/predictor tests
+    webp/           # WebP lossless/lossy variants
 ```
 
 ## CID22
@@ -40,6 +51,14 @@ Test images and fuzz corpus from the zune-image project for decoder robustness t
 - **License**: MIT OR Apache-2.0 OR Zlib
 - **test-images/jpeg/**: JPEG edge cases (CMYK, progressive, unusual sampling factors, large dimensions)
 - **fuzz-corpus/**: Minimal test cases for crash/hang detection
+
+## image-rs
+
+Test images from the Rust image library for format conformance testing.
+
+- **Source**: https://github.com/image-rs/image
+- **License**: MIT
+- **test-images/**: Format edge cases, bit depths, compression modes, malformed files
 
 ## Planned Additions
 
