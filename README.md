@@ -222,6 +222,8 @@ codec-corpus/
 
 This corpus is used by [imageflow](https://github.com/imazen/imageflow) for codec quality calibration testing.
 
+**See also**: [Codec Comparison Guide](https://github.com/imazen/codec-comparison) — How to compare image codecs fairly, quality metrics, and scientific methodology.
+
 ## Contributing
 
 To suggest additional datasets, please open an issue with:
