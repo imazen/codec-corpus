@@ -47,7 +47,8 @@ mozjpeg/
 
 clic2025/
   LICENSE           # Unsplash License
-  *.png             # 32 high-resolution validation images
+  validation/       # 32 images - tune against these
+  final-test/       # 30 images - holdout for final evaluation
 ```
 
 ## CID22
@@ -102,11 +103,12 @@ Test images from the mozjpeg project for JPEG encoder/decoder testing.
 
 ## CLIC 2025
 
-Validation images from the Challenge on Learned Image Compression (CLIC) 2025.
+Images from the Challenge on Learned Image Compression (CLIC) 2025.
 
 - **Source**: https://clic2025.compression.cc/
 - **License**: Unsplash License (free for any use, no attribution required)
-- **Files**: 32 high-resolution PNG images (~103 MB)
+- **validation/**: 32 images (~103 MB) - tune/calibrate against these
+- **final-test/**: 30 images (~116 MB) - holdout set for final evaluation only
 
 ## Usage
 
