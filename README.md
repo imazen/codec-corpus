@@ -44,6 +44,10 @@ kodak/
 mozjpeg/
   LICENSE           # IJG + BSD
   *.ppm, *.bmp, *.jpg, *.icc  # JPEG codec test files
+
+clic2025/
+  LICENSE           # Unsplash License
+  *.png             # 64 high-resolution validation images
 ```
 
 ## CID22
@@ -95,6 +99,14 @@ Test images from the mozjpeg project for JPEG encoder/decoder testing.
 - **Source**: https://github.com/mozilla/mozjpeg
 - **License**: IJG License + Modified BSD License
 - **Files**: PPM, BMP, JPG test images + ICC color profiles
+
+## CLIC 2025
+
+Validation images from the Challenge on Learned Image Compression (CLIC) 2025.
+
+- **Source**: https://clic2025.compression.cc/
+- **License**: Unsplash License (free for any use, no attribution required)
+- **Files**: 64 high-resolution PNG images (~103 MB)
 
 ## Usage
 
