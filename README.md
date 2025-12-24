@@ -1,136 +1,230 @@
 # Codec Corpus
 
-Reference image corpus for codec quality calibration testing.
+A curated collection of reference images for codec quality calibration, compression benchmarking, and format conformance testing.
 
-## Structure
-
-```
-CID22/
-  LICENSE           # CC BY-SA 4.0
-  CID22-512/
-    validation/     # 41 images - held out for validation
-    training/       # 209 images - used for calibration
-
-zune/
-  LICENSE-MIT       # MIT OR Apache-2.0 OR Zlib
-  LICENSE-APACHE
-  LICENSE-ZLIB
-  test-images/
-    jpeg/           # 31 JPEG edge case images + benchmarks
-  fuzz-corpus/
-    jpeg/           # 1836 minimal fuzz test cases
-    png/            # PNG fuzz test cases
-    inflate/        # Compression fuzz test cases
-
-image-rs/
-  LICENSE-MIT       # MIT
-  test-images/
-    bmp/            # BMP format variants + malformed files
-    gif/            # GIF animation tests
-    ico/            # Icon format tests
-    jpg/            # JPEG metadata/progressive tests
-    png/            # PNG 16bpc, APNG, transparency (PNGsuite subset)
-    tiff/           # TIFF compression/predictor tests
-    webp/           # WebP lossless/lossy variants
-
-pngsuite/
-  LICENSE           # Freeware (Willem van Schaik)
-  *.png             # 176 PNG conformance test images
-
-kodak/
-  LICENSE           # Unrestricted (Eastman Kodak)
-  *.png             # 24 classic test images (768x512)
-
-mozjpeg/
-  LICENSE           # IJG + BSD
-  *.ppm, *.bmp, *.jpg, *.icc  # JPEG codec test files
-
-clic2025/
-  LICENSE           # Unsplash License
-  validation/       # 32 images - tune against these
-  final-test/       # 30 images - holdout for final evaluation
-```
-
-## CID22
-
-A subset of the CID22 (Compression Image Dataset 2022) resized to 512px on the longest edge.
-
-- **Source**: https://github.com/Cloudinary/CID22
-- **License**: CC BY-SA 4.0
-- **CID22-512/validation/**: Images from the official CID22 validation set
-- **CID22-512/training/**: Remaining images for model training/calibration
-
-## zune-image
-
-Test images and fuzz corpus from the zune-image project for decoder robustness testing.
-
-- **Source**: https://github.com/etemesi254/zune-image
-- **License**: MIT OR Apache-2.0 OR Zlib
-- **test-images/jpeg/**: JPEG edge cases (CMYK, progressive, unusual sampling factors, large dimensions)
-- **fuzz-corpus/**: Minimal test cases for crash/hang detection
-
-## image-rs
-
-Test images from the Rust image library for format conformance testing.
-
-- **Source**: https://github.com/image-rs/image
-- **License**: MIT
-- **test-images/**: Format edge cases, bit depths, compression modes, malformed files
-
-## PNGSuite
-
-The official PNG conformance test suite by Willem van Schaik.
-
-- **Source**: http://www.schaik.com/pngsuite/
-- **License**: Freeware (free to use, copy, modify, distribute)
-- **Files**: 176 test images covering all PNG features (bit depths, color types, interlacing, transparency, gamma, etc.)
-
-## Kodak
-
-The classic Kodak Lossless True Color Image Suite, widely used as a standard benchmark for image compression research.
-
-- **Source**: http://r0k.us/graphics/kodak/
-- **License**: Unrestricted usage (released by Eastman Kodak Company)
-- **Files**: 24 uncompressed 768x512 PNG images
-
-## mozjpeg
-
-Test images from the mozjpeg project for JPEG encoder/decoder testing.
-
-- **Source**: https://github.com/mozilla/mozjpeg
-- **License**: IJG License + Modified BSD License
-- **Files**: PPM, BMP, JPG test images + ICC color profiles
-
-## CLIC 2025
-
-Images from the Challenge on Learned Image Compression (CLIC) 2025.
-
-- **Source**: https://clic2025.compression.cc/
-- **License**: Unsplash License (free for any use, no attribution required)
-- **validation/**: 32 images (~103 MB) - tune/calibrate against these
-- **final-test/**: 30 images (~116 MB) - holdout set for final evaluation only
-
-## Usage
-
-This corpus is fetched during optional Rust tests in [imageflow](https://github.com/imazen/imageflow) for codec quality calibration.
+## Quick Start
 
 ```bash
-# Clone everything
+# Clone everything (~280 MB)
 git clone https://github.com/imazen/codec-corpus.git
-```
 
-### Download a single dataset
-
-Use sparse checkout to download only the dataset you need:
-
-```bash
+# Or clone just one dataset
 git clone --depth 1 --filter=blob:none --sparse \
   https://github.com/imazen/codec-corpus.git
 cd codec-corpus
-git sparse-checkout set kodak        # or: pngsuite, CID22, mozjpeg, etc.
+git sparse-checkout set kodak
+
+# Add more datasets later
+git sparse-checkout add pngsuite clic2025
 ```
 
-To add more datasets later:
-```bash
-git sparse-checkout add pngsuite
+---
+
+## Datasets
+
+### Quality Calibration & Compression Research
+
+| Dataset | Images | Size | Best For |
+|---------|--------|------|----------|
+| [CLIC 2025](#clic-2025) | 62 | 219 MB | High-res quality calibration |
+| [CID22](#cid22) | 250 | 15 MB | Perceptual quality training |
+| [Kodak](#kodak) | 24 | 15 MB | Classic compression benchmarks |
+
+### Format Conformance & Edge Cases
+
+| Dataset | Files | Size | Best For |
+|---------|-------|------|----------|
+| [PNGSuite](#pngsuite) | 176 | 60 KB | PNG decoder conformance |
+| [image-rs](#image-rs) | 127 | 4.2 MB | Multi-format edge cases |
+| [zune](#zune-image) | 3,431 | 20 MB | Fuzz testing, decoder robustness |
+| [mozjpeg](#mozjpeg) | 16 | 1.1 MB | JPEG codec testing |
+
+---
+
+## CLIC 2025
+
+**Challenge on Learned Image Compression 2025** — High-resolution images for compression quality research.
+
+| Folder | Images | Size | Purpose |
+|--------|--------|------|---------|
+| `validation/` | 32 | 103 MB | Tune and calibrate against these |
+| `final-test/` | 30 | 116 MB | Holdout set — final evaluation only |
+
+- **Source**: https://clic2025.compression.cc/
+- **License**: [Unsplash License](https://unsplash.com/license) — Free for any use, no attribution required
+- **Resolution**: High-resolution PNG images
+
+---
+
+## CID22
+
+**Compression Image Dataset 2022** by Cloudinary — Diverse images for perceptual quality research.
+
+| Folder | Images | Purpose |
+|--------|--------|---------|
+| `CID22-512/validation/` | 41 | Held out for validation |
+| `CID22-512/training/` | 209 | Model training and calibration |
+
+- **Source**: https://github.com/Cloudinary/CID22
+- **License**: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+- **Resolution**: Resized to 512px on longest edge
+
+---
+
+## Kodak
+
+**Kodak Lossless True Color Image Suite** — The classic benchmark for image compression research since the 1990s.
+
+| Folder | Images | Resolution |
+|--------|--------|------------|
+| `kodak/` | 24 | 768×512 |
+
+- **Source**: http://r0k.us/graphics/kodak/
+- **License**: Unrestricted usage (released by Eastman Kodak Company)
+- **Format**: Lossless PNG
+
+---
+
+## PNGSuite
+
+**Official PNG Conformance Test Suite** by Willem van Schaik — Tests all PNG features.
+
+| Folder | Images | Purpose |
+|--------|--------|---------|
+| `pngsuite/` | 176 | Full PNG feature coverage |
+
+Covers:
+- Bit depths: 1, 2, 4, 8, 16
+- Color types: grayscale, RGB, palette, alpha
+- Interlacing, transparency, gamma correction
+- Corrupted files for error handling
+
+- **Source**: http://www.schaik.com/pngsuite/
+- **License**: Freeware — free to use, copy, modify, distribute
+
+---
+
+## image-rs
+
+**Rust image library test images** — Format edge cases and malformed files.
+
+| Folder | Files | Purpose |
+|--------|-------|---------|
+| `test-images/bmp/` | 59 | BMP format variants + malformed files |
+| `test-images/gif/` | 11 | GIF animation edge cases |
+| `test-images/ico/` | 7 | Icon format tests |
+| `test-images/jpg/` | 6 | JPEG metadata, progressive encoding |
+| `test-images/png/` | 22 | 16bpc, APNG, transparency |
+| `test-images/tiff/` | 10 | TIFF compression, predictors |
+| `test-images/webp/` | 9 | WebP lossless/lossy variants |
+
+- **Source**: https://github.com/image-rs/image
+- **License**: [MIT License](https://opensource.org/licenses/MIT)
+
+---
+
+## zune-image
+
+**zune-image test suite** — Fuzz corpus and JPEG edge cases for decoder robustness.
+
+| Folder | Files | Purpose |
+|--------|-------|---------|
+| `test-images/jpeg/` | 31 | JPEG edge cases (CMYK, progressive, sampling) |
+| `test-images/jpeg/benchmarks/` | 8 | 7680×4320 decoder speed benchmarks |
+| `fuzz-corpus/jpeg/` | 1,836 | Minimal JPEG fuzz test cases |
+| `fuzz-corpus/png/` | ~800 | Minimal PNG fuzz test cases |
+| `fuzz-corpus/inflate/` | ~700 | Compression edge cases |
+
+- **Source**: https://github.com/etemesi254/zune-image
+- **License**: MIT OR Apache-2.0 OR Zlib (triple-licensed)
+
+---
+
+## mozjpeg
+
+**Mozilla JPEG encoder test images** — Reference files for JPEG codec testing.
+
+| File | Purpose |
+|------|---------|
+| `testorig.ppm` | Source image (PPM format) |
+| `testorig.jpg` | Baseline JPEG |
+| `testimgari.jpg` | Arithmetic coding |
+| `testimgint.jpg` | Progressive JPEG |
+| `testorig12.jpg` | 12-bit JPEG |
+| `*.bmp` | BMP test images |
+| `*.icc` | ICC color profiles |
+
+- **Source**: https://github.com/mozilla/mozjpeg
+- **License**: IJG License + Modified BSD License
+
+---
+
+## Directory Structure
+
 ```
+codec-corpus/
+├── clic2025/
+│   ├── LICENSE
+│   ├── validation/          # 32 high-res images (tune against)
+│   └── final-test/          # 30 high-res images (holdout)
+├── CID22/
+│   ├── LICENSE
+│   └── CID22-512/
+│       ├── validation/      # 41 images
+│       └── training/        # 209 images
+├── kodak/
+│   ├── LICENSE
+│   └── *.png                # 24 classic test images
+├── pngsuite/
+│   ├── LICENSE
+│   └── *.png                # 176 PNG conformance images
+├── image-rs/
+│   ├── LICENSE-MIT
+│   └── test-images/
+│       ├── bmp/
+│       ├── gif/
+│       ├── ico/
+│       ├── jpg/
+│       ├── png/
+│       ├── tiff/
+│       └── webp/
+├── zune/
+│   ├── LICENSE-MIT
+│   ├── LICENSE-APACHE
+│   ├── LICENSE-ZLIB
+│   ├── test-images/jpeg/
+│   └── fuzz-corpus/
+│       ├── jpeg/
+│       ├── png/
+│       └── inflate/
+└── mozjpeg/
+    ├── LICENSE
+    └── *.ppm, *.jpg, *.bmp, *.icc
+```
+
+---
+
+## License Summary
+
+| Dataset | License | Commercial Use | Attribution |
+|---------|---------|----------------|-------------|
+| CLIC 2025 | Unsplash | Yes | No |
+| CID22 | CC BY-SA 4.0 | Yes | Required |
+| Kodak | Unrestricted | Yes | No |
+| PNGSuite | Freeware | Yes | No |
+| image-rs | MIT | Yes | No |
+| zune | MIT/Apache-2.0/Zlib | Yes | No |
+| mozjpeg | IJG + BSD | Yes | No |
+
+---
+
+## Usage
+
+This corpus is used by [imageflow](https://github.com/imazen/imageflow) for codec quality calibration testing.
+
+## Contributing
+
+To suggest additional datasets, please open an issue with:
+- Source URL
+- License information
+- Description of what the dataset tests
