@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Expected error results for test files in codec-corpus",
+  "version": "1.0.0",
+  "pngsuite": {
+    "description": "PNGSuite test files - x prefix files should error",
+    "error_files": {
+      "xc1n0g08.png": {
+        "corruption": "invalid_color_type",
+        "details": "Color type 1 is not valid in PNG spec",
+        "expected_errors": ["InvalidColorType", "FormatError", "InvalidHeader"]
+      },
+      "xc9n2c08.png": {
+        "corruption": "invalid_color_type",
+        "details": "Color type 9 is not valid in PNG spec (valid: 0,2,3,4,6)",
+        "expected_errors": ["InvalidColorType", "FormatError", "InvalidHeader"]
+      },
+      "xcrn0g04.png": {
+        "corruption": "ascii_transfer_cr",
+        "details": "Carriage return bytes inserted (simulates ASCII/text mode transfer)",
+        "expected_errors": ["InvalidData", "ChecksumError", "CrcMismatch", "DecompressionError"]
+      },
+      "xcsn0g01.png": {
+        "corruption": "checksum_error",
+        "details": "IDAT chunk has incorrect CRC checksum",
+        "expected_errors": ["ChecksumError", "CrcMismatch", "CrcError"]
+      },
+      "xd0n2c08.png": {
+        "corruption": "invalid_bit_depth",
+        "details": "Bit depth 0 is not valid",
+        "expected_errors": ["InvalidBitDepth", "FormatError", "InvalidHeader"]
+      },
+      "xd3n2c08.png": {
+        "corruption": "invalid_bit_depth",
+        "details": "Bit depth 3 is not valid for this color type",
+        "expected_errors": ["InvalidBitDepth", "FormatError", "InvalidHeader"]
+      },
+      "xd9n2c08.png": {
+        "corruption": "invalid_bit_depth",
+        "details": "Bit depth 9 is not valid in PNG spec",
+        "expected_errors": ["InvalidBitDepth", "FormatError", "InvalidHeader"]
+      },
+      "xdtn0g01.png": {
+        "corruption": "missing_idat",
+        "details": "No IDAT chunk present",
+        "expected_errors": ["MissingChunk", "MissingIdat", "UnexpectedEof", "FormatError"]
+      },
+      "xhdn0g08.png": {
+        "corruption": "ihdr_checksum",
+        "details": "IHDR chunk has incorrect CRC checksum",
+        "expected_errors": ["ChecksumError", "CrcMismatch", "CrcError", "InvalidHeader"]
+      },
+      "xlfn0g04.png": {
+        "corruption": "ascii_transfer_lf",
+        "details": "Line feed bytes inserted (simulates ASCII/text mode transfer)",
+        "expected_errors": ["InvalidData", "ChecksumError", "CrcMismatch", "DecompressionError"]
+      },
+      "xs1n0g01.png": {
+        "corruption": "invalid_signature",
+        "details": "Corrupted PNG signature (byte 1)",
+        "expected_errors": ["InvalidSignature", "NotPng", "FormatError"]
+      },
+      "xs2n0g01.png": {
+        "corruption": "invalid_signature",
+        "details": "Corrupted PNG signature (byte 2)",
+        "expected_errors": ["InvalidSignature", "NotPng", "FormatError"]
+      },
+      "xs4n0g01.png": {
+        "corruption": "invalid_signature",
+        "details": "Corrupted PNG signature (byte 4)",
+        "expected_errors": ["InvalidSignature", "NotPng", "FormatError"]
+      },
+      "xs7n0g01.png": {
+        "corruption": "invalid_signature",
+        "details": "Corrupted PNG signature (byte 7)",
+        "expected_errors": ["InvalidSignature", "NotPng", "FormatError"]
+      }
+    }
+  },
+  "zune_fuzz": {
+    "description": "Fuzz corpus files - should not crash, may error or decode",
+    "directories": {
+      "fuzz-corpus/jpeg/": {
+        "expected_behavior": "no_crash",
+        "common_errors": [
+          "UnexpectedEof",
+          "InvalidMarker",
+          "InvalidHuffman",
+          "InvalidQuantization",
+          "BadDimensions",
+          "BadSOS",
+          "HuffmanError",
+          "FormatError"
+        ]
+      },
+      "fuzz-corpus/png/": {
+        "expected_behavior": "no_crash",
+        "common_errors": [
+          "InvalidSignature",
+          "ChecksumError",
+          "InvalidChunk",
+          "DecompressionError",
+          "BadDimensions",
+          "FormatError"
+        ]
+      },
+      "fuzz-corpus/inflate/": {
+        "expected_behavior": "no_crash",
+        "common_errors": [
+          "InvalidBlockType",
+          "DistanceTooFar",
+          "InvalidCode",
+          "UnexpectedEof",
+          "CorruptData"
+        ]
+      }
+    }
+  },
+  "image_rs": {
+    "description": "image-rs test images",
+    "error_patterns": {
+      "*.bad_bmp": {
+        "expected_behavior": "error",
+        "details": "Intentionally malformed BMP files"
+      }
+    },
+    "regression_files": {
+      "regression/jpg/oss-fuzz-36829.jpeg": {
+        "source": "oss-fuzz",
+        "issue": "36829",
+        "expected_behavior": "no_crash"
+      },
+      "regression/webp/panic.webp": {
+        "expected_behavior": "no_crash",
+        "details": "Previously caused panic, now should error gracefully"
+      }
+    }
+  },
+  "zune_test_images": {
+    "description": "zune-image test images for JPEG edge cases",
+    "directories": {
+      "test-images/jpeg/": {
+        "expected_behavior": "decode",
+        "details": "Valid JPEG files covering various features"
+      },
+      "test-images/jpeg/benchmarks/": {
+        "expected_behavior": "decode",
+        "details": "Large 7680x4320 files for decoder speed testing"
+      }
+    }
+  },
+  "jpeg_error_cases": {
+    "description": "Known JPEG error patterns from zune-jpeg tests",
+    "inline_test_cases": [
+      {
+        "name": "eof",
+        "bytes_hex": "ffd8a4",
+        "expected_error": "UnexpectedEof",
+        "details": "Truncated after SOI marker"
+      },
+      {
+        "name": "bad_ff_marker_size",
+        "bytes_hex": "ffd8ff00000000",
+        "expected_error": "InvalidMarker",
+        "details": "Invalid marker size"
+      },
+      {
+        "name": "bad_number_of_scans",
+        "bytes_hex": "ffd8ffdae8c5ff",
+        "expected_error": "SosError",
+        "error_message": "Bad SOS length 59589,corrupt jpeg",
+        "details": "SOS segment with invalid length"
+      },
+      {
+        "name": "huffman_length_subtraction_overflow",
+        "bytes_hex": "ffd8ffc40000",
+        "expected_error": "FormatStatic",
+        "error_message": "Invalid Huffman length in image",
+        "details": "DHT segment with zero length"
+      },
+      {
+        "name": "index_oob",
+        "bytes_hex": "ffd8ffda000801000801",
+        "expected_error": "IndexOutOfBounds",
+        "details": "SOS references non-existent component"
+      },
+      {
+        "name": "mul_with_overflow",
+        "bytes_hex": "ffd8ffc0ff01080977300fffc0",
+        "expected_error": "SofError",
+        "error_message": "Length of start of frame differs from expected 584,value is 65281",
+        "details": "SOF segment with invalid dimensions/length"
+      }
+    ]
+  },
+  "reference_checksums": {
+    "description": "CRC32 checksums for reference image verification (image-rs pattern)",
+    "format": "{original_filename}.{crc32_hex}.png",
+    "animation_format": "{original_filename}.anim_{frame_1based}_{crc32_hex}.png",
+    "examples": {
+      "png/interlaced/basi2c08.png": "7855b9bf",
+      "png/transparency/acid2.png": "8de8ca3f"
+    }
+  }
+}
