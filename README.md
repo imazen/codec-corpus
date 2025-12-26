@@ -34,6 +34,7 @@ git sparse-checkout add pngsuite clic2025
 
 | Dataset | Files | Size | Best For |
 |---------|-------|------|----------|
+| [JXL](#jxl) | 81 | 7.7 MB | JPEG XL decoder conformance |
 | [PNGSuite](#pngsuite) | 176 | 60 KB | PNG decoder conformance |
 | [image-rs](#image-rs) | 127 | 4.2 MB | Multi-format edge cases |
 | [zune](#zune-image) | 3,431 | 20 MB | Fuzz testing, decoder robustness |
@@ -82,6 +83,30 @@ git sparse-checkout add pngsuite clic2025
 - **Source**: http://r0k.us/graphics/kodak/
 - **License**: Unrestricted usage (released by Eastman Kodak Company)
 - **Format**: Lossless PNG
+
+---
+
+## JXL
+
+**JPEG XL Conformance Test Suite** — Comprehensive coverage of JPEG XL decoder features.
+
+| Folder | Files | Purpose |
+|--------|-------|---------|
+| `jxl/conformance/` | 40 | Official conformance tests |
+| `jxl/features/` | 26 | Feature-specific tests |
+| `jxl/photographic/` | 4 | Real-world photographs |
+| `jxl/edge-cases/` | 13 | Minimal and boundary tests |
+
+Covers:
+- Encoding: Lossless (modular), Lossy (VarDCT), progressive
+- Color: 8/12/16/32-bit, sRGB, linear, grayscale, CMYK
+- HDR: PQ and HLG transfer functions
+- Animation: Multi-frame, variable timing, splines
+- Alpha: Premultiplied, non-premultiplied, blendmodes
+- Features: Orientation, patches, ICC profiles, JPEG reconstruction
+
+- **Source**: https://github.com/libjxl/libjxl, https://github.com/libjxl/conformance
+- **License**: BSD-3-Clause
 
 ---
 
@@ -172,6 +197,13 @@ codec-corpus/
 │   └── CID22-512/
 │       ├── validation/      # 41 images
 │       └── training/        # 209 images
+├── jxl/
+│   ├── LICENSE
+│   ├── README.md
+│   ├── conformance/         # 40 official conformance tests
+│   ├── features/            # 26 feature-specific tests
+│   ├── photographic/        # 4 real-world photographs
+│   └── edge-cases/          # 13 minimal/boundary tests
 ├── kodak/
 │   ├── LICENSE
 │   └── *.png                # 24 classic test images
@@ -210,6 +242,7 @@ codec-corpus/
 |---------|---------|----------------|-------------|
 | CLIC 2025 | Unsplash | Yes | No |
 | CID22 | CC BY-SA 4.0 | Yes | Required |
+| JXL | BSD-3-Clause | Yes | No |
 | Kodak | Unrestricted | Yes | No |
 | PNGSuite | Freeware | Yes | No |
 | image-rs | MIT | Yes | No |
