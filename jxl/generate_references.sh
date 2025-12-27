@@ -56,14 +56,14 @@ for subdir in conformance features photographic edge-cases; do
         # Use PNG (lossless, much smaller than PPM)
         if "$DJXL" "$jxl" "$out_png" 2>/dev/null; then
             echo "  ✓ $name.png"
-            ((count++))
+            count=$((count + 1))
         elif "$DJXL" "$jxl" "$out_ppm" 2>/dev/null; then
             # Fallback to PPM if PNG fails (e.g., HDR content)
             echo "  ✓ $name.ppm (fallback)"
-            ((count++))
+            count=$((count + 1))
         else
             echo "  ✗ $name (FAILED)"
-            ((failed++))
+            failed=$((failed + 1))
         fi
     done
 done
