@@ -53,12 +53,13 @@ for subdir in conformance features photographic edge-cases; do
         out_ppm="$REF_DIR/$subdir/${name}.ppm"
         out_png="$REF_DIR/$subdir/${name}.png"
 
-        # Try PPM first (exact pixels), fall back to PNG for grayscale/complex
-        if "$DJXL" "$jxl" "$out_ppm" 2>/dev/null; then
-            echo "  ✓ $name.ppm"
-            ((count++))
-        elif "$DJXL" "$jxl" "$out_png" 2>/dev/null; then
+        # Use PNG (lossless, much smaller than PPM)
+        if "$DJXL" "$jxl" "$out_png" 2>/dev/null; then
             echo "  ✓ $name.png"
+            ((count++))
+        elif "$DJXL" "$jxl" "$out_ppm" 2>/dev/null; then
+            # Fallback to PPM if PNG fails (e.g., HDR content)
+            echo "  ✓ $name.ppm (fallback)"
             ((count++))
         else
             echo "  ✗ $name (FAILED)"
