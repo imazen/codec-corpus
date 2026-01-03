@@ -50,6 +50,7 @@ Each file has a companion `.txt` explaining:
 - `extraneous-data/`: Extra bytes in unusual places
 - `marker-quirks/`: Unusual but potentially recoverable marker issues
 - `metadata-quirks/`: ICC profile chunk ordering/numbering issues
+- `progressive-quirks/`: Progressive JPEG edge cases (AC refinement, scan structure)
 
 ## Usage
 

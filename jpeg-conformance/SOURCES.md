@@ -169,3 +169,9 @@ lenient decoders. See companion .txt files for details on each file.
 | icc_chunk_order.jpeg | jpeg-decoder | MIT |
 | icc_chunk_seq_no_0.jpeg | jpeg-decoder | MIT |
 | icc_missing_chunk.jpeg | jpeg-decoder | MIT |
+
+### progressive-quirks/
+
+| File | Source | License | Notes |
+|------|--------|---------|-------|
+| mozjpeg-rs-ac-refine-q95.jpg | mozjpeg-rs | BSD-3-Clause | AC refinement edge case, decodes with libjpeg/mozjpeg but fails with jpeg-decoder/zune-jpeg |
