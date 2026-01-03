@@ -39,6 +39,7 @@ git sparse-checkout add pngsuite clic2025
 | [image-rs](#image-rs) | 127 | 4.2 MB | Multi-format edge cases |
 | [zune](#zune-image) | 3,431 | 20 MB | Fuzz testing, decoder robustness |
 | [mozjpeg](#mozjpeg) | 16 | 1.1 MB | JPEG codec testing |
+| [jpeg-fuzz](#jpeg-fuzz) | 137 | 3.5 MB | JPEG decoder crash/edge cases |
 
 ---
 
@@ -184,6 +185,25 @@ Covers:
 
 ---
 
+## jpeg-fuzz
+
+**JPEG Decoder Robustness Test Suite** — Crash tests, edge cases, and malformed files for decoder testing.
+
+| Folder | Files | Purpose |
+|--------|-------|---------|
+| `must_decode/` | 21 | Valid JPEGs that must decode correctly |
+| `may_decode/` | 8 | Edge cases with decoder-dependent behavior |
+| `should_fail/` | 108 | Malformed files that must error gracefully |
+
+Sources:
+- [jpeg-decoder](https://github.com/image-rs/jpeg-decoder) crash tests
+- [libjpeg-turbo](https://github.com/libjpeg-turbo/libjpeg-turbo) reference images
+- [imagetestsuite](https://code.google.com/p/imagetestsuite/) malformed files
+
+- **License**: MIT (jpeg-decoder), IJG+BSD (libjpeg-turbo), Various (imagetestsuite)
+
+---
+
 ## Directory Structure
 
 ```
@@ -229,9 +249,14 @@ codec-corpus/
 │       ├── jpeg/
 │       ├── png/
 │       └── inflate/
-└── mozjpeg/
-    ├── LICENSE
-    └── *.ppm, *.jpg, *.bmp, *.icc
+├── mozjpeg/
+│   ├── LICENSE
+│   └── *.ppm, *.jpg, *.bmp, *.icc
+└── jpeg-fuzz/
+    ├── README.md
+    ├── must_decode/        # 21 valid reference JPEGs
+    ├── may_decode/         # 8 edge cases
+    └── should_fail/        # 108 malformed files
 ```
 
 ---
@@ -248,6 +273,7 @@ codec-corpus/
 | image-rs | MIT | Yes | No |
 | zune | MIT/Apache-2.0/Zlib | Yes | No |
 | mozjpeg | IJG + BSD | Yes | No |
+| jpeg-fuzz | MIT/IJG+BSD/Various | Yes | No |
 
 ---
 
