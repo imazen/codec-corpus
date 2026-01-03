@@ -39,7 +39,7 @@ git sparse-checkout add pngsuite clic2025
 | [image-rs](#image-rs) | 127 | 4.2 MB | Multi-format edge cases |
 | [zune](#zune-image) | 3,431 | 20 MB | Fuzz testing, decoder robustness |
 | [mozjpeg](#mozjpeg) | 16 | 1.1 MB | JPEG codec testing |
-| [jpeg-fuzz](#jpeg-fuzz) | 137 | 3.5 MB | JPEG decoder crash/edge cases |
+| [jpeg-fuzz](#jpeg-fuzz) | 177 | 7.3 MB | JPEG decoder crash/edge cases |
 
 ---
 
@@ -191,16 +191,26 @@ Covers:
 
 | Folder | Files | Purpose |
 |--------|-------|---------|
-| `must_decode/` | 21 | Valid JPEGs that must decode correctly |
-| `may_decode/` | 8 | Edge cases with decoder-dependent behavior |
-| `should_fail/` | 108 | Malformed files that must error gracefully |
+| `must_decode/` | 42 | Valid JPEGs (reference, camera samples, CMYK, restart intervals) |
+| `may_decode/` | 19 | Edge cases (truncated files, ICC quirks) |
+| `should_fail/` | 116 | Malformed files that must error gracefully |
+
+Contents:
+- Camera samples from 12 manufacturers (Canon, Nikon, Sony, Fujifilm, etc.)
+- Restart marker interval variants (1/2/4 rows, 1/8/16 blocks)
+- CMYK and YCCK color model files
+- Truncated files at various positions (SOI, headers, scan data, missing EOI)
+- Invalid EXIF metadata samples
+- Crash test files (overflows, missing markers)
 
 Sources:
 - [jpeg-decoder](https://github.com/image-rs/jpeg-decoder) crash tests
 - [libjpeg-turbo](https://github.com/libjpeg-turbo/libjpeg-turbo) reference images
 - [imagetestsuite](https://code.google.com/p/imagetestsuite/) malformed files
+- [exif-samples](https://github.com/ianare/exif-samples) camera EXIF samples
+- [imageflow](https://github.com/imazen/imageflow) CMYK samples
 
-- **License**: MIT (jpeg-decoder), IJG+BSD (libjpeg-turbo), Various (imagetestsuite)
+- **License**: MIT/IJG+BSD/Various (see jpeg-fuzz/README.md)
 
 ---
 
@@ -254,9 +264,9 @@ codec-corpus/
 │   └── *.ppm, *.jpg, *.bmp, *.icc
 └── jpeg-fuzz/
     ├── README.md
-    ├── must_decode/        # 21 valid reference JPEGs
-    ├── may_decode/         # 8 edge cases
-    └── should_fail/        # 108 malformed files
+    ├── must_decode/        # 42 valid JPEGs (camera, CMYK, restart)
+    ├── may_decode/         # 19 edge cases (truncated, ICC)
+    └── should_fail/        # 116 malformed files
 ```
 
 ---
