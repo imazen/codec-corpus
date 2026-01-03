@@ -1,0 +1,11 @@
+File: extraneous-bytes-after-sos.jpg
+Source: Brother DSmobile 920DW scanner, provided by @filipl
+
+Non-conformance: Extra bytes present after entropy-coded scan data,
+before or instead of proper EOI marker.
+
+Strict behavior: MAY reject - unexpected data after scan.
+Lenient behavior: SHOULD decode - ignore trailing garbage.
+
+This is a common issue with some scanner firmware and image editors.
+Most production decoders (libjpeg, browsers) handle this gracefully.

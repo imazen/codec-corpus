@@ -1,0 +1,11 @@
+File: icc_chunk_count_mismatch.jpeg
+Source: jpeg-decoder test suite
+
+Non-conformance: ICC profile APP2 markers declare a total chunk count
+that doesn't match the actual number of chunks present.
+
+Strict behavior: SHOULD reject - ICC profile is malformed.
+Lenient behavior: MAY ignore ICC profile and decode image in sRGB.
+
+ICC profiles can be split across multiple APP2 markers. Each chunk
+contains a sequence number and total count. This file has mismatched counts.

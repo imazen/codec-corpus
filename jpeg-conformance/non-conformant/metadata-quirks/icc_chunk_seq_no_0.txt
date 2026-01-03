@@ -1,0 +1,10 @@
+File: icc_chunk_seq_no_0.jpeg
+Source: jpeg-decoder test suite
+
+Non-conformance: ICC profile chunk has sequence number 0 (should start at 1).
+
+Strict behavior: SHOULD reject - invalid sequence number.
+Lenient behavior: MAY treat as sequence 1 or ignore ICC profile.
+
+ICC chunk sequence numbers are 1-indexed per the spec.
+Sequence number 0 is invalid.

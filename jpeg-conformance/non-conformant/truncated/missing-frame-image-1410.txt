@@ -1,0 +1,9 @@
+File: missing-frame-image-1410.jpg
+Source: jpeg-decoder issue #1410
+
+Non-conformance: Truncated file discovered during fuzzing.
+
+Strict behavior: SHOULD reject.
+Lenient behavior: Behavior varies by decoder.
+
+Found by @frewsxcv during fuzz testing of jpeg-decoder.

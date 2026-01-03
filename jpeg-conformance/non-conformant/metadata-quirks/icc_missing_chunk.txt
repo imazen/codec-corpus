@@ -1,0 +1,10 @@
+File: icc_missing_chunk.jpeg
+Source: jpeg-decoder test suite
+
+Non-conformance: ICC profile is missing one or more chunks from the sequence.
+
+Strict behavior: SHOULD reject - incomplete ICC profile.
+Lenient behavior: MAY ignore ICC profile and decode image in sRGB.
+
+For example, chunks 1 and 3 are present but chunk 2 is missing.
+The ICC profile cannot be reconstructed without all chunks.

@@ -1,0 +1,10 @@
+File: icc_chunk_order.jpeg
+Source: jpeg-decoder test suite
+
+Non-conformance: ICC profile chunks appear out of sequence order in the file.
+
+Strict behavior: MAY reject - chunks not in ascending order.
+Lenient behavior: SHOULD reorder chunks and decode ICC profile.
+
+ICC chunks should appear in order (chunk 1, chunk 2, etc.) but the
+spec doesn't strictly require it. Decoders should handle reordering.

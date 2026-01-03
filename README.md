@@ -39,7 +39,7 @@ git sparse-checkout add pngsuite clic2025
 | [image-rs](#image-rs) | 127 | 4.2 MB | Multi-format edge cases |
 | [zune](#zune-image) | 3,431 | 20 MB | Fuzz testing, decoder robustness |
 | [mozjpeg](#mozjpeg) | 16 | 1.1 MB | JPEG codec testing |
-| [jpeg-fuzz](#jpeg-fuzz) | 177 | 7.3 MB | JPEG decoder crash/edge cases |
+| [jpeg-conformance](#jpeg-conformance) | 176 | 6.6 MB | JPEG decoder conformance tests |
 
 ---
 
@@ -185,32 +185,31 @@ Covers:
 
 ---
 
-## jpeg-fuzz
+## jpeg-conformance
 
-**JPEG Decoder Robustness Test Suite** — Crash tests, edge cases, and malformed files for decoder testing.
+**JPEG Decoder Conformance Test Suite** — Organized by expected decoder behavior.
 
-| Folder | Files | Purpose |
-|--------|-------|---------|
-| `must_decode/` | 42 | Valid JPEGs (reference, camera samples, CMYK, restart intervals) |
-| `may_decode/` | 19 | Edge cases (truncated files, ICC quirks) |
-| `should_fail/` | 116 | Malformed files that must error gracefully |
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `valid/` | 41 | MUST decode correctly |
+| `invalid/` | 116 | MUST reject gracefully |
+| `non-conformant/` | 19 | MAY reject or recover |
 
-Contents:
-- Camera samples from 12 manufacturers (Canon, Nikon, Sony, Fujifilm, etc.)
-- Restart marker interval variants (1/2/4 rows, 1/8/16 blocks)
-- CMYK and YCCK color model files
-- Truncated files at various positions (SOI, headers, scan data, missing EOI)
-- Invalid EXIF metadata samples
-- Crash test files (overflows, missing markers)
+**valid/** — Reference images, camera samples (12 manufacturers), restart intervals, CMYK/YCCK
 
-Sources:
-- [jpeg-decoder](https://github.com/image-rs/jpeg-decoder) crash tests
-- [libjpeg-turbo](https://github.com/libjpeg-turbo/libjpeg-turbo) reference images
-- [imagetestsuite](https://code.google.com/p/imagetestsuite/) malformed files
-- [exif-samples](https://github.com/ianare/exif-samples) camera EXIF samples
-- [imageflow](https://github.com/imazen/imageflow) CMYK samples
+**invalid/** — Crash tests, imagetestsuite malformed files, corrupted EXIF
 
-- **License**: MIT/IJG+BSD/Various (see jpeg-fuzz/README.md)
+**non-conformant/** — Files violating spec but common in the wild:
+- `truncated/` — Files cut at various positions (with `.txt` descriptions)
+- `extraneous-data/` — Extra bytes in unusual places
+- `marker-quirks/` — Unusual marker sequences
+- `metadata-quirks/` — ICC profile chunk issues
+
+Each non-conformant file has a companion `.txt` explaining what's wrong
+and expected strict vs lenient decoder behavior.
+
+- **Sources**: See [SOURCES.md](jpeg-conformance/SOURCES.md) for full attribution
+- **License**: MIT/IJG+BSD/Various
 
 ---
 
@@ -262,11 +261,12 @@ codec-corpus/
 ├── mozjpeg/
 │   ├── LICENSE
 │   └── *.ppm, *.jpg, *.bmp, *.icc
-└── jpeg-fuzz/
+└── jpeg-conformance/
     ├── README.md
-    ├── must_decode/        # 42 valid JPEGs (camera, CMYK, restart)
-    ├── may_decode/         # 19 edge cases (truncated, ICC)
-    └── should_fail/        # 116 malformed files
+    ├── SOURCES.md          # File attribution
+    ├── valid/              # 41 files - MUST decode
+    ├── invalid/            # 116 files - MUST reject
+    └── non-conformant/     # 19 files - MAY reject (with .txt descriptions)
 ```
 
 ---
@@ -283,7 +283,7 @@ codec-corpus/
 | image-rs | MIT | Yes | No |
 | zune | MIT/Apache-2.0/Zlib | Yes | No |
 | mozjpeg | IJG + BSD | Yes | No |
-| jpeg-fuzz | MIT/IJG+BSD/Various | Yes | No |
+| jpeg-conformance | MIT/IJG+BSD/Various | Yes | No |
 
 ---
 

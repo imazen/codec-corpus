@@ -1,0 +1,10 @@
+File: icc_chunk_double_seq_no.jpeg
+Source: jpeg-decoder test suite
+
+Non-conformance: ICC profile has duplicate sequence numbers in APP2 chunks.
+
+Strict behavior: SHOULD reject - duplicate chunk sequence numbers.
+Lenient behavior: MAY use first occurrence or ignore ICC profile.
+
+Each ICC chunk should have a unique sequence number (1, 2, 3...).
+This file has the same sequence number appearing twice.

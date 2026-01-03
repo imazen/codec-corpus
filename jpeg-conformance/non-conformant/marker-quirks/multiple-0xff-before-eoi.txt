@@ -1,0 +1,12 @@
+File: multiple-0xff-before-eoi.jpg
+Source: Generated, provided by @quilan1
+
+Non-conformance: Multiple 0xFF bytes appear before EOI marker.
+In JPEG, 0xFF followed by 0x00 is a stuffed byte (escaped 0xFF in data),
+but 0xFF followed by another 0xFF is technically a fill byte.
+
+Strict behavior: MAY reject - unusual marker sequence.
+Lenient behavior: SHOULD decode - skip fill bytes, find EOI.
+
+The JPEG spec allows fill bytes (0xFF padding) between markers,
+but multiple consecutive 0xFF bytes before EOI is unusual.
