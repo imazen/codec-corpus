@@ -57,8 +57,10 @@ git sparse-checkout add CID22 gb82-sc qoi-benchmark
 
 | Folder | Images | Size | Purpose |
 |--------|--------|------|---------|
-| `clic2025/validation/` | 32 | 103 MB | Tune and calibrate against these |
+| `clic2025/training/` | 32 | 103 MB | Tune and calibrate encoders against these |
 | `clic2025/final-test/` | 30 | 116 MB | Holdout set — final evaluation only |
+
+Note: The CLIC challenge calls these "validation" and "test" respectively. We renamed "validation" → "training" because in codec development, "validation" typically implies a holdout set, which is the opposite of the intended use. See [`clic2025/README.md`](clic2025/README.md) for the original naming and download links.
 
 - **Resolution**: ~2048px on long edge (varies from 878px to 2048px on short edge)
 - **Format**: Lossless PNG, 8-bit sRGB
@@ -355,8 +357,9 @@ Includes: corrupt JPEG, color profile edge cases, transparency, gradients, white
 codec-corpus/
 ├── clic2025/                    # CLIC 2025 (Unsplash License)
 │   ├── LICENSE
-│   ├── validation/              # 32 high-res images
-│   └── final-test/              # 30 high-res images (holdout)
+│   ├── README.md                # Original naming & download links
+│   ├── training/                # 32 high-res images (CLIC calls this "validation")
+│   └── final-test/              # 30 high-res images (CLIC calls this "test")
 ├── CID22/                       # Cloudinary CID22 (CC BY-SA 4.0)
 │   ├── LICENSE
 │   └── CID22-512/
