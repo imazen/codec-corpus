@@ -1,0 +1,7 @@
+# Codec evaluation cache files
+*.pareto.json
+*.pareto_curves.json
+.coefficient_cache*/
+
+# Resized/derived datasets (generated locally)
+clic2025-1024/
