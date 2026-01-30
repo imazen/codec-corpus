@@ -5,3 +5,12 @@
 
 # Resized/derived datasets (generated locally)
 clic2025-1024/
+
+# QOI benchmark downloaded subsets (fetched by download scripts)
+qoi-benchmark/icon_512/
+qoi-benchmark/icon_64/
+qoi-benchmark/screenshot_game/
+qoi-benchmark/textures_*/
+qoi-benchmark/photo_*/
+qoi-benchmark/pngimg/
+qoi-benchmark/.tmp_download/
