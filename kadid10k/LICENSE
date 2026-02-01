@@ -2,7 +2,7 @@ KADID-10k Reference Images
 ===========================
 
 These 81 pristine reference images are from the KADID-10k (Konstanz Artificially
-Distorted Image quality Database) dataset.
+Distorted Image quality Database) dataset, created at the University of Konstanz.
 
 Source: https://database.mmsp-kn.de/kadid-10k-database.html
 
@@ -18,17 +18,19 @@ Citation
 --------
 If you use these images in research, please cite:
 
-  Lin, Hanhe; Hosu, Vlad; Saupe, Dietmar. "KADID-10k: A Large-scale
-  Artificially Distorted IQA Database." Tenth International Conference
-  on Quality of Multimedia Experience (QoMEX), IEEE, 2019.
+  H. Lin, V. Hosu and D. Saupe, "KADID-10k: A Large-scale Artificially
+  Distorted IQA Database," 2019 Eleventh International Conference on
+  Quality of Multimedia Experience (QoMEX), Berlin, Germany, 2019,
+  pp. 1-3, doi: 10.1109/QoMEX.2019.8743252.
 
-  BibTeX:
+BibTeX:
+
   @inproceedings{lin2019kadid,
-    title={KADID-10k: A large-scale artificially distorted IQA database},
     author={Lin, Hanhe and Hosu, Vlad and Saupe, Dietmar},
-    booktitle={2019 Tenth International Conference on Quality of
+    booktitle={2019 Eleventh International Conference on Quality of
                Multimedia Experience (QoMEX)},
-    pages={1--3},
+    title={{KADID-10k}: A Large-scale Artificially Distorted {IQA} Database},
     year={2019},
-    organization={IEEE}
+    pages={1-3},
+    doi={10.1109/QoMEX.2019.8743252}
   }

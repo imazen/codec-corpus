@@ -30,6 +30,7 @@ git sparse-checkout add CID22 gb82-sc qoi-benchmark
 |---------|--------|------|------------|---------|----------|
 | [CLIC 2025](#clic-2025) | 62 | 219 MB | ~2048px long edge | Unsplash | High-res lossy quality calibration |
 | [CID22](#cid22) | 250 | 94 MB | 512×512 | CC BY-SA 4.0 | Perceptual quality training, diverse content |
+| [KADID-10k](#kadid-10k) | 81 | 25 MB | 512×384 | Pixabay | IQA research reference images |
 | [GB82](#gb82) | 25 | 9.6 MB | 576×576 | CC0 | Compact photographic benchmarking |
 | [GB82-SC](#gb82-sc) | 10 | 2.9 MB | Various (640–2940px) | CC0 | Screen content & screenshot compression |
 | [QOI Benchmark](#qoi-benchmark-suite) | 15+ | 39 MB+ | Various (1313×2874–8008) | CC0/PD/Mixed | Web screenshots, icons, textures |
@@ -83,6 +84,22 @@ For compression benchmarking, CID22 is one of the best choices available: it was
 - **Resolution**: 512×512, 8-bit sRGB
 - **Source**: https://github.com/Cloudinary/CID22
 - **License**: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) — Free for any use, attribution required. Derivative works must use the same license.
+
+---
+
+### KADID-10k
+
+**Konstanz Artificially Distorted Image quality Database** — 81 pristine reference images used for image quality assessment (IQA) research. Created at the University of Konstanz, this dataset is widely used for training and evaluating perceptual quality metrics. Only the pristine reference images are included here; the 10,125 distorted variants are not.
+
+| Folder | Images | Size |
+|--------|--------|------|
+| `kadid10k/` | 81 | 25 MB |
+
+- **Resolution**: 512×384, 8-bit sRGB
+- **Format**: Lossless PNG
+- **Source**: https://database.mmsp-kn.de/kadid-10k-database.html
+- **License**: [Pixabay License](https://pixabay.com/service/license/) — Free for commercial and non-commercial use, no attribution required.
+- **Citation**: H. Lin, V. Hosu and D. Saupe, "KADID-10k: A Large-scale Artificially Distorted IQA Database," 2019 Eleventh International Conference on Quality of Multimedia Experience (QoMEX), Berlin, Germany, 2019, pp. 1-3, doi: [10.1109/QoMEX.2019.8743252](https://doi.org/10.1109/QoMEX.2019.8743252).
 
 ---
 
@@ -388,6 +405,9 @@ codec-corpus/
 │   ├── download.sh              # Fetch additional subsets (bash)
 │   ├── download.ps1             # Fetch additional subsets (PowerShell)
 │   └── screenshot_web/          # 14 web page screenshots (CC0)
+├── kadid10k/                    # KADID-10k reference images (Pixabay License)
+│   ├── LICENSE
+│   └── *.png                    # 81 pristine images for IQA research
 ├── kodak-legacy/                # Kodak suite — DEPRECATED (Unrestricted)
 │   ├── LICENSE
 │   └── *.png                    # 24 classic images (historical reference only)
@@ -441,6 +461,7 @@ Every dataset includes its own license file in its directory.
 | QOI `icon_*` | Public Domain | Yes | No | No |
 | QOI `screenshot_game` | CC BY-SA 3.0 | Yes | **Yes** | **Yes** |
 | QOI `pngimg` | CC BY-NC 4.0 | **No** | **Yes** | No |
+| KADID-10k | Pixabay License | Yes | No | No |
 | Kodak (Legacy) | Unrestricted | Yes | No | No |
 | JXL | BSD-3-Clause | Yes | No | No |
 | PNGSuite | Freeware | Yes | No | No |

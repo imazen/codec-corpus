@@ -1,0 +1,44 @@
+Codec Corpus - License Summary
+==============================
+
+This repository contains multiple datasets, each with its own license.
+See individual LICENSE files in each directory for full terms.
+
+Dataset Licenses
+----------------
+
+| Dataset | License | Commercial | Attribution |
+|---------|---------|------------|-------------|
+| clic2025/ | Unsplash License | Yes | No |
+| CID22/ | CC BY-SA 4.0 | Yes | Required |
+| gb82/ | CC0 1.0 | Yes | No |
+| gb82-sc/ | CC0 1.0 | Yes | No |
+| kadid10k/ | Pixabay License | Yes | No (research citation requested) |
+| kodak-legacy/ | Unrestricted | Yes | No |
+| jxl/ | BSD-3-Clause | Yes | No |
+| pngsuite/ | Freeware | Yes | No |
+| mozjpeg/ | IJG + BSD | Yes | No |
+| image-rs/ | MIT | Yes | No |
+| zune/ | MIT/Apache-2.0/Zlib | Yes | No |
+| imageflow/ | Various | Yes | Varies |
+| jpeg-conformance/ | MIT/IJG+BSD/Various | Yes | Varies |
+| qoi-benchmark/ | CC0/PD/Mixed | Yes | Varies by subset |
+
+Citation Requirements
+---------------------
+
+CID22:
+  Jon Sneyers and Moritz Firsching, "Reconstructing JPEG-compressed images
+  using Generative Adversarial Networks", Google LLC, 2021.
+
+KADID-10k:
+  H. Lin, V. Hosu and D. Saupe, "KADID-10k: A Large-scale Artificially
+  Distorted IQA Database," 2019 Eleventh International Conference on
+  Quality of Multimedia Experience (QoMEX), Berlin, Germany, 2019,
+  pp. 1-3, doi: 10.1109/QoMEX.2019.8743252.
+
+Repository License
+------------------
+
+The repository structure, documentation, and scripts (README.md, download
+scripts, etc.) are released under CC0 1.0 (public domain).
