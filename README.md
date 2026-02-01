@@ -33,7 +33,7 @@ git sparse-checkout add CID22 gb82-sc qoi-benchmark
 | [GB82](#gb82) | 25 | 9.6 MB | 576×576 | CC0 | Compact photographic benchmarking |
 | [GB82-SC](#gb82-sc) | 10 | 2.9 MB | Various (640–2940px) | CC0 | Screen content & screenshot compression |
 | [QOI Benchmark](#qoi-benchmark-suite) | 15+ | 39 MB+ | Various (1313×2874–8008) | CC0/PD/Mixed | Web screenshots, icons, textures |
-| [Kodak](#kodak) | 24 | 15 MB | 768×512 | Unrestricted | Legacy benchmark (see note below) |
+| [Kodak (Legacy)](#kodak-legacy) | 24 | 15 MB | 768×512 | Unrestricted | **Deprecated** — historical reference only |
 
 ### Format Conformance & Edge Cases
 
@@ -182,26 +182,38 @@ cd qoi-benchmark
 
 ---
 
-### Kodak
+### Kodak (Legacy)
 
-**Kodak Lossless True Color Image Suite** — 24 images that have been the de facto standard benchmark for image compression research since the 1990s.
+> ⚠️ **Do not use Kodak for new projects.** This dataset is retained only for historical comparison with older research. See recommendations below.
+
+**Kodak Lossless True Color Image Suite** — 24 images that were the de facto standard benchmark for image compression research from the 1990s through the 2010s.
 
 | Folder | Images | Size |
 |--------|--------|------|
-| `kodak/` | 24 | 15 MB |
+| `kodak-legacy/` | 24 | 15 MB |
 
 - **Resolution**: 768×512 (or 512×768), 8-bit sRGB
 - **Format**: Lossless PNG
 - **Source**: http://r0k.us/graphics/kodak/
 - **License**: Unrestricted usage (released by Eastman Kodak Company)
 
-> **Note on relevance (2026):** The Kodak suite is included for historical continuity and comparability with decades of published research. However, we consider it a poor choice for modern codec evaluation:
+> **Why Kodak is deprecated:**
 >
-> - **Low resolution**: 768×512 is far smaller than modern display resolutions, camera output, or typical web images. Compression artifacts and codec behavior at this size are not representative of real-world usage.
-> - **Limited diversity**: 24 images of mostly pastoral outdoor scenes circa 1990 do not reflect modern photographic content (smartphones, social media, HDR, etc.).
-> - **Metric gaming**: Many codecs have been specifically tuned to perform well on Kodak, reducing its value as an independent benchmark.
+> - **Overfit benchmark**: Decades of codec tuning against these 24 images have made Kodak scores nearly meaningless. Many codecs are specifically optimized for Kodak, so performance on Kodak does not predict real-world quality.
+> - **Resolution mismatch**: 768×512 is far smaller than modern display resolutions, camera output, or typical web images. Compression behavior at this size is not representative of actual usage.
+> - **Content bias**: 24 images of mostly pastoral outdoor scenes circa 1990 do not reflect modern content: smartphone photos, social media, text overlays, UI screenshots, HDR, etc.
+> - **No holdout set**: With only 24 images and no train/test split, any tuning against Kodak is also evaluation against Kodak.
 >
-> **Prefer instead:** [CLIC 2025](#clic-2025) for high-resolution photographic calibration, [CID22](#cid22) for diverse content at moderate resolution, or [GB82](#gb82) for a compact CC0 alternative. For testing screen content and non-photographic images — increasingly important for modern web delivery — use [GB82-SC](#gb82-sc) or the [QOI Benchmark](#qoi-benchmark-suite) screenshot subsets.
+> **Use instead:**
+>
+> | Use Case | Recommended Dataset |
+> |----------|---------------------|
+> | Fixed-size comparison (512×512) | [CID22](#cid22) — 250 diverse images with training/validation split |
+> | Variable-size / high-res photos | [CLIC 2025](#clic-2025) — modern high-res photographs (~2048px) |
+> | Compact photographic benchmarks | [GB82](#gb82) — 25 challenging CC0 images at 576×576 |
+> | Screenshots & screen content | [GB82-SC](#gb82-sc) and [QOI `screenshot_web`](#qoi-benchmark-suite) |
+>
+> **Screenshot testing is essential** for any codec deployed on the web. Text, UI elements, and graphics compress very differently from photographs — ignoring screen content leads to poor real-world performance.
 
 ---
 
@@ -376,9 +388,9 @@ codec-corpus/
 │   ├── download.sh              # Fetch additional subsets (bash)
 │   ├── download.ps1             # Fetch additional subsets (PowerShell)
 │   └── screenshot_web/          # 14 web page screenshots (CC0)
-├── kodak/                       # Kodak suite (Unrestricted)
+├── kodak-legacy/                # Kodak suite — DEPRECATED (Unrestricted)
 │   ├── LICENSE
-│   └── *.png                    # 24 classic images
+│   └── *.png                    # 24 classic images (historical reference only)
 ├── jxl/                         # JPEG XL tests (BSD-3-Clause)
 │   ├── LICENSE
 │   ├── conformance/             # 39 conformance tests
@@ -429,7 +441,7 @@ Every dataset includes its own license file in its directory.
 | QOI `icon_*` | Public Domain | Yes | No | No |
 | QOI `screenshot_game` | CC BY-SA 3.0 | Yes | **Yes** | **Yes** |
 | QOI `pngimg` | CC BY-NC 4.0 | **No** | **Yes** | No |
-| Kodak | Unrestricted | Yes | No | No |
+| Kodak (Legacy) | Unrestricted | Yes | No | No |
 | JXL | BSD-3-Clause | Yes | No | No |
 | PNGSuite | Freeware | Yes | No | No |
 | image-rs | MIT | Yes | No | No |
@@ -454,7 +466,7 @@ Use [GB82-SC](#gb82-sc) and [QOI Benchmark `screenshot_web`](#qoi-benchmark-suit
 **For decoder conformance:**
 Use the format-specific test suites: [JPEG Conformance](#jpeg-conformance), [JXL](#jxl), [PNGSuite](#pngsuite). For fuzz/robustness testing, use [zune-image](#zune-image).
 
-**Avoid using Kodak alone** for modern codec evaluation. See the [note above](#kodak).
+**Do not use Kodak** for modern codec evaluation. It is retained only for historical comparison — see the [deprecation note](#kodak-legacy). For any new benchmarking work, use [CID22](#cid22) (fixed 512×512) or [CLIC 2025](#clic-2025) (variable high-res), and always include screenshot/screen content testing via [GB82-SC](#gb82-sc) or [QOI `screenshot_web`](#qoi-benchmark-suite).
 
 ---
 
