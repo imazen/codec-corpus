@@ -89,7 +89,7 @@ Any top-level folder in the [codec-corpus repo](https://github.com/imazen/codec-
 | Dataset | Download | Files | Description | License |
 |---------|----------|-------|-------------|---------|
 | `jpeg-conformance` | 76 MB | 277 | 41 valid, 116 invalid, 40 non-conformant, 78 crash repros | MIT/IJG+BSD |
-| `jxl` | 577 MB | 372 | Conformance, features, edge cases, photographic, reference | BSD-3-Clause |
+| `jxl` | 88 MB | 188 | Conformance, features, edge cases, photographic | BSD-3-Clause |
 | `pngsuite` | 720 KB | 178 | Official PNG conformance tests (all color types, depths) | Freeware |
 | `webp-conformance` | 1.3 MB | 230 | 225 valid WebP files + sources | Various |
 

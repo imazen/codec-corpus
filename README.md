@@ -2,7 +2,7 @@
 
 A curated collection of reference images for codec quality calibration, compression benchmarking, and format conformance testing. Maintained by [Imazen](https://github.com/imazen).
 
-Total repo size: ~1.1 GB committed, plus ~1 GB available via download scripts.
+Total repo size: ~577 MB committed, plus ~1 GB available via download scripts.
 
 ## Quick Start
 
@@ -40,7 +40,7 @@ git sparse-checkout add CID22 gb82-sc qoi-benchmark
 | Dataset | Files | Size | License | Best For |
 |---------|-------|------|---------|----------|
 | [JPEG Conformance](#jpeg-conformance) | 277 | 76 MB | MIT/IJG+BSD/Various | JPEG decoder conformance & robustness |
-| [JXL](#jxl) | 372 | 577 MB | BSD-3-Clause | JPEG XL decoder conformance |
+| [JXL](#jxl) | 188 | 88 MB | BSD-3-Clause | JPEG XL decoder conformance |
 | [PNGSuite](#pngsuite) | 178 | 720 KB | Freeware | PNG decoder conformance |
 | [WebP Conformance](#webp-conformance) | 230 | 1.3 MB | Various | WebP decoder conformance |
 | [image-rs](#image-rs) | 127 | 4.5 MB | MIT | Multi-format edge cases |
