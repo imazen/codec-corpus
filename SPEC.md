@@ -12,7 +12,7 @@ No data ships with the crate. Datasets are fetched lazily on first access and ca
 
 **GitHub tags**: Each crate version corresponds to a GitHub tag with the same version number. Tag `v1.0.0` contains the data files that crate version `1.0.0` expects.
 
-**GitHub release assets**: Per-dataset tarballs attached to each release:
+**GitHub release assets**: Per-dataset tarballs attached to each release. Each top-level directory in the repository becomes a release asset:
 
 ```
 Release v1.0.0:
@@ -21,24 +21,25 @@ Release v1.0.0:
   cid22.tar.gz               (94 MB)
   gb82.tar.gz                (9.6 MB)
   ...
-  checksums.sha256
 ```
+
+Datasets are not hardcoded in the crate. Any top-level directory in the repository is a valid dataset name. The crate discovers them at download time.
 
 A crate bugfix that doesn't change data still gets a new tag with the same data re-uploaded. The tag is the single source of truth for "what files belong to this crate version."
 
 ## Dependencies
 
-Required:
+Rust crate dependencies:
 
 - `dirs` — cross-platform cache directory resolution (tiny)
-- `tar_light` — extract `.tar.gz` archives (lightweight, v0.1.9+)
 - `fd-lock` — file-based locking for concurrent safety (tiny)
 
 No heavy dependencies. No `gix`, `serde`, `toml`, `ureq`, or `reqwest`.
 
-External tools used at runtime (not Rust dependencies):
+External tools used at runtime (via `std::process::Command`):
 
-- `git` — primary download method (shell command via `std::process::Command`)
+- `git` — primary download method (sparse checkout)
+- `tar` — extract `.tar.gz` release assets
 - `curl` / `wget` / `powershell Invoke-WebRequest` — HTTP fallback for tarball download
 
 ## Cache layout
@@ -64,13 +65,15 @@ External tools used at runtime (not Rust dependencies):
 
 ### Cache root resolution
 
-Checked in order:
+Resolved by `Corpus::new()` in order:
 
 1. `CODEC_CORPUS_CACHE` environment variable (explicit override)
 2. `dirs::cache_dir()` which resolves to:
    - Linux: `~/.cache/`
    - macOS: `~/Library/Caches/`
    - Windows: `%LOCALAPPDATA%`
+
+`Corpus::with_cache_root(path)` always uses the given path, ignoring the environment variable.
 
 ### Major version isolation
 
@@ -101,21 +104,17 @@ This ensures correctness: even a patch release may add, remove, or modify test f
 ```rust
 pub struct Corpus {
     root: PathBuf,
-    is_local: bool,
 }
 
 impl Corpus {
     /// Initialize with default cache location.
-    /// Resolves cache root but performs no I/O beyond directory creation.
+    /// Resolves cache root via `CODEC_CORPUS_CACHE` env var, then `dirs::cache_dir()`.
+    /// Performs no I/O beyond directory creation.
     pub fn new() -> Result<Self, Error>;
 
-    /// Initialize with explicit cache root.
+    /// Initialize with explicit cache root. Overrides the environment variable.
     /// Files will live at `{path}/codec-corpus/v{major}/`.
     pub fn with_cache_root(path: impl Into<PathBuf>) -> Result<Self, Error>;
-
-    /// Use an existing local directory directly. No downloads, no version checks.
-    /// For offline use, CI pre-population, or pointing at a local git checkout.
-    pub fn from_local(path: impl Into<PathBuf>) -> Self;
 
     /// Get the path to a dataset or subdirectory within a dataset.
     ///
@@ -146,24 +145,6 @@ impl Corpus {
     /// Check if a dataset is already cached locally, without downloading.
     /// Only checks that the directory exists and the version matches.
     pub fn is_cached(&self, dataset: &str) -> bool;
-
-    /// List all available datasets. Returns embedded metadata, no I/O.
-    pub fn list() -> &'static [DatasetInfo];
-}
-```
-
-### Dataset metadata
-
-```rust
-pub struct DatasetInfo {
-    /// Dataset name, used as argument to `Corpus::get()`.
-    pub name: &'static str,
-    /// Approximate size in megabytes.
-    pub size_mb: f32,
-    /// Human-readable description.
-    pub description: &'static str,
-    /// SHA-256 checksum of the `.tar.gz` release asset.
-    pub sha256: &'static str,
 }
 ```
 
@@ -174,14 +155,6 @@ pub struct DatasetInfo {
 pub enum Error {
     /// Network unavailable and dataset not in cache.
     NetworkUnavailable { dataset: String },
-    /// Dataset name not found in embedded metadata.
-    UnknownDataset { name: String },
-    /// Downloaded file failed SHA-256 verification.
-    ChecksumMismatch {
-        dataset: String,
-        expected: String,
-        actual: String,
-    },
     /// Requested path does not exist after successful download.
     PathNotFound { path: String },
     /// Filesystem error (permissions, disk full, etc.).
@@ -191,35 +164,10 @@ pub enum Error {
 }
 ```
 
-## Embedded metadata
-
-All metadata is hardcoded as constants in the crate source. No config files, no parsing.
+## Constants
 
 ```rust
-const CORPUS_COMMIT: &str = "993584e";
 const REPO_URL: &str = "https://github.com/imazen/codec-corpus";
-
-const DATASETS: &[DatasetInfo] = &[
-    DatasetInfo {
-        name: "webp-conformance",
-        size_mb: 1.3,
-        description: "RFC 6386 WebP conformance test files (225 files)",
-        sha256: "...",
-    },
-    DatasetInfo {
-        name: "clic2025",
-        size_mb: 219.0,
-        description: "High-res photographic images for codec evaluation",
-        sha256: "...",
-    },
-    DatasetInfo {
-        name: "cid22",
-        size_mb: 94.0,
-        description: "250 diverse images, 512x512",
-        sha256: "...",
-    },
-    // ...
-];
 ```
 
 The crate version is obtained from `env!("CARGO_PKG_VERSION")` at compile time. The GitHub tag for downloads is derived as `v{CARGO_PKG_VERSION}`.
@@ -235,7 +183,7 @@ Split `path` on the first `/`:
 - `"webp-conformance/valid"` → dataset=`webp-conformance`, subdir=`Some("valid")`
 - `"clic2025/training"` → dataset=`clic2025`, subdir=`Some("training")`
 
-Validate that `dataset` exists in `DATASETS`. Return `Error::UnknownDataset` if not.
+Any valid directory name is accepted as a dataset. There is no hardcoded list.
 
 ### Step 2: Check cache validity
 
@@ -307,10 +255,7 @@ If `curl` is available on Windows (common on modern Windows), try it first befor
 **Tool detection**: Use `std::process::Command::new("curl").arg("--version")` (or equivalent) and check exit code. Cache the result for the session.
 
 After download:
-- Compute SHA-256 of the downloaded file.
-- Compare against `DatasetInfo.sha256`.
-- On mismatch: delete temp file, return `Error::ChecksumMismatch`.
-- On match: extract with `tar_light::unpack()` to `{root}/.tmp-{pid}-{timestamp}/`.
+- Extract with `tar xzf {temp_file} -C {root}/.tmp-{pid}-{timestamp}/`.
 - Move `{root}/.tmp-{pid}-{timestamp}/{dataset}/` → `{root}/{dataset}/`.
 - Clean up temp files.
 
@@ -320,9 +265,9 @@ If all HTTP tools fail: return `Error::NetworkUnavailable`.
 
 After successful download, write `{root}/.version` with the crate version string.
 
-Also clean up orphaned `.tmp-*` entries older than 1 hour (from crashed previous runs).
-
 Release the lock.
+
+**Cleanup (always, regardless of success or failure):** While holding the lock, remove orphaned `.tmp-*` entries older than 1 hour (from crashed previous runs). This runs in a finally/cleanup path so that failed downloads don't cause unbounded disk growth.
 
 ### Step 6: Return path
 
@@ -338,7 +283,7 @@ return Ok(full_path)
 ## Atomic download safety
 
 - All downloads target `.tmp-{pid}-{timestamp}/` or `.tmp-{pid}-{timestamp}.tar.gz`.
-- Only after successful download, checksum verification, and extraction does the final directory appear via rename/move.
+- Only after successful download and extraction does the final directory appear via rename/move.
 - If the process crashes mid-download, orphaned `.tmp-*` entries are harmless and cleaned up on the next successful run.
 - `fd-lock` prevents concurrent processes from downloading the same dataset simultaneously. After acquiring the lock, the version is re-checked to handle the case where another process completed the download while we waited.
 
@@ -355,31 +300,6 @@ This is safe because:
 - Only one process downloads at a time.
 - The version file is written atomically (write to temp, rename).
 - The dataset directory appears atomically (rename from `.tmp-*`).
-
-## `from_local()` behavior
-
-`Corpus::from_local(path)` bypasses all download logic, version checking, and locking.
-
-The provided path is used directly as the corpus root. `corpus.get("webp-conformance/valid")` simply returns `{path}/webp-conformance/valid/` if it exists, or `Error::PathNotFound` if not.
-
-This is useful for:
-- CI environments where the corpus is pre-cloned.
-- Developer machines with a local checkout: `Corpus::from_local("~/work/codec-eval/codec-corpus")`.
-- Offline testing.
-- Environments where network access is restricted.
-
-## SHA-256 verification
-
-Checksums are computed on the `.tar.gz` file after download, before extraction.
-
-The SHA-256 implementation uses Rust's standard approach (a small embedded implementation or a lightweight crate like `sha2`). No OpenSSL dependency.
-
-On checksum mismatch:
-1. Delete the downloaded temp file.
-2. Return `Error::ChecksumMismatch` with expected and actual hashes.
-3. Do NOT retry automatically (avoids infinite loops on bad releases).
-
-The caller can retry if desired.
 
 ## Platform support
 
@@ -444,13 +364,6 @@ Or via environment variable:
 CODEC_CORPUS_CACHE=/mnt/fast-storage cargo test -- --ignored
 ```
 
-### Local checkout (no downloads)
-
-```rust
-let corpus = Corpus::from_local("/home/user/work/codec-eval/codec-corpus");
-let webp = corpus.get("webp-conformance/valid")?;
-```
-
 ### CI integration
 
 No special CI setup required. `cargo test` handles everything:
@@ -467,27 +380,14 @@ conformance:
     - uses: Swatinem/rust-cache@v2
 
     # Cache the corpus across CI runs
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       with:
         path: ~/.cache/codec-corpus
-        key: corpus-v${{ hashFiles('Cargo.lock') }}
-        restore-keys: corpus-v
+        key: corpus-v1
+        restore-keys: corpus-
 
     # Just run tests - codec-corpus handles downloading
     - run: cargo test --release -- --ignored
-```
-
-### Listing available datasets
-
-```rust
-for ds in Corpus::list() {
-    println!("{}: {} ({:.1} MB)", ds.name, ds.description, ds.size_mb);
-}
-// Output:
-// webp-conformance: RFC 6386 WebP conformance test files (225 files) (1.3 MB)
-// clic2025: High-res photographic images for codec evaluation (219.0 MB)
-// cid22: 250 diverse images, 512x512 (94.0 MB)
-// ...
 ```
 
 ## Releasing a new version
@@ -497,9 +397,6 @@ for ds in Corpus::list() {
 1. Commit changes to `imazen/codec-corpus` repository.
 2. Update the crate source:
    - Bump version in `Cargo.toml` (e.g. `1.0.0` → `1.1.0`)
-   - Update `CORPUS_COMMIT` constant
-   - Update SHA-256 checksums for affected datasets
-   - Update `DatasetInfo` entries if datasets were added/removed
 3. Create GitHub tag `v1.1.0` on the corpus repository.
 4. Create GitHub release `v1.1.0` with per-dataset `.tar.gz` assets.
 5. Publish crate: `cargo publish`.
@@ -517,16 +414,15 @@ The tag and release are required even for code-only changes because the download
 ### Creating release assets
 
 ```bash
-# From the codec-corpus repository root
-for dataset in webp-conformance clic2025 cid22 gb82 gb82-sc \
-               jpeg-conformance jxl pngsuite qoi-benchmark \
-               image-rs imageflow mozjpeg zune; do
+# From the codec-corpus repository root — tar every top-level directory
+for dataset in */; do
+    dataset="${dataset%/}"
+    [[ "$dataset" == .* || "$dataset" == crate ]] && continue
     tar czf "${dataset}.tar.gz" "${dataset}/"
-    sha256sum "${dataset}.tar.gz" >> checksums.sha256
 done
 
 # Upload to GitHub release
-gh release create "v1.0.0" *.tar.gz checksums.sha256
+gh release create "v1.0.0" *.tar.gz
 ```
 
 ## File structure of the crate
@@ -537,7 +433,6 @@ codec-corpus/           (the crate, NOT the data repo)
   src/
     lib.rs              (~400 lines)
     download.rs         (~200 lines: git, curl, wget, powershell)
-    checksum.rs         (~50 lines: SHA-256 verification)
   README.md
   LICENSE
   SPEC.md              (this file)
@@ -561,9 +456,9 @@ Zero additional Rust dependencies for HTTP. These tools are ubiquitous:
 - `powershell` is always available on Windows.
 - `curl.exe` ships with Windows 10+ (build 17063+).
 
-### Why `tar_light`?
+### Why shell `tar` instead of a Rust tar crate?
 
-Lightweight pure-Rust tar extraction. No C dependencies, no OpenSSL. Supports `.tar.gz` which is the release asset format.
+`tar` is pre-installed on Linux, macOS, and Windows 10+ (build 17063+). Shelling out is consistent with how we invoke `git`, `curl`, and `wget` — zero additional Rust dependencies for archive extraction, and proper error reporting via exit codes.
 
 ### Why per-dataset tarballs instead of one large archive?
 
