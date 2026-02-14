@@ -2,7 +2,7 @@
 
 A curated collection of reference images for codec quality calibration, compression benchmarking, and format conformance testing. Maintained by [Imazen](https://github.com/imazen).
 
-Total repo size: ~600 MB committed, plus ~1 GB available via download scripts.
+Total repo size: ~1.1 GB committed, plus ~1 GB available via download scripts.
 
 ## Quick Start
 
@@ -34,19 +34,19 @@ git sparse-checkout add CID22 gb82-sc qoi-benchmark
 | [GB82](#gb82) | 25 | 9.6 MB | 576×576 | CC0 | Compact photographic benchmarking |
 | [GB82-SC](#gb82-sc) | 10 | 2.9 MB | Various (640–2940px) | CC0 | Screen content & screenshot compression |
 | [QOI Benchmark](#qoi-benchmark-suite) | 15+ | 39 MB+ | Various (1313×2874–8008) | CC0/PD/Mixed | Web screenshots, icons, textures |
-| [Kodak (Legacy)](#kodak-legacy) | 24 | 15 MB | 768×512 | Unrestricted | **Deprecated** — historical reference only |
 
 ### Format Conformance & Edge Cases
 
 | Dataset | Files | Size | License | Best For |
 |---------|-------|------|---------|----------|
-| [JPEG Conformance](#jpeg-conformance) | 177 | 6.7 MB | MIT/IJG+BSD/Various | JPEG decoder conformance & robustness |
-| [JXL](#jxl) | 180 | 88 MB | BSD-3-Clause | JPEG XL decoder conformance |
-| [PNGSuite](#pngsuite) | 176 | 720 KB | Freeware | PNG decoder conformance |
-| [image-rs](#image-rs) | 126 | 4.5 MB | MIT | Multi-format edge cases |
-| [zune-image](#zune-image) | 3,429 | 33 MB | MIT/Apache-2.0/Zlib | Fuzz testing, decoder robustness |
-| [mozjpeg](#mozjpeg) | 15 | 1.2 MB | IJG + BSD | JPEG codec reference files |
-| [imageflow](#imageflow) | 45 | 7.8 MB | Various | Orientation, format conversion edge cases |
+| [JPEG Conformance](#jpeg-conformance) | 277 | 76 MB | MIT/IJG+BSD/Various | JPEG decoder conformance & robustness |
+| [JXL](#jxl) | 372 | 577 MB | BSD-3-Clause | JPEG XL decoder conformance |
+| [PNGSuite](#pngsuite) | 178 | 720 KB | Freeware | PNG decoder conformance |
+| [WebP Conformance](#webp-conformance) | 230 | 1.3 MB | Various | WebP decoder conformance |
+| [image-rs](#image-rs) | 127 | 4.5 MB | MIT | Multi-format edge cases |
+| [zune-image](#zune-image) | 3,434 | 33 MB | MIT/Apache-2.0/Zlib | Fuzz testing, decoder robustness |
+| [mozjpeg](#mozjpeg) | 16 | 1.2 MB | IJG + BSD | JPEG codec reference files |
+| [imageflow](#imageflow) | 51 | 7.8 MB | Various | Orientation, format conversion edge cases |
 
 ---
 
@@ -170,7 +170,7 @@ Subsets from the [QOI Benchmark Suite](https://qoiformat.org/benchmark/) by Domi
 | `textures_pk02` | 237 | 99 MB | — | Texture pack 02 |
 | `textures_plants` | 61 | 50 MB | — | Plant textures |
 | `textures_photo` | 21 | 37 MB | — | Photographic textures |
-| `photo_kodak` | 25 | 15 MB | Unrestricted | Kodak suite (duplicate) |
+| `photo_kodak` | 25 | 15 MB | Unrestricted | Kodak suite<sup>1</sup> |
 | `photo_tecnick` | 101 | 228 MB | — | Tecnick photographic set |
 | `photo_wikipedia` | 50 | 85 MB | — | Wikipedia photographs |
 | `pngimg` | 189 | 220 MB | CC BY-NC 4.0 | PNG images (non-commercial only) |
@@ -199,41 +199,6 @@ cd qoi-benchmark
 
 ---
 
-### Kodak (Legacy)
-
-> ⚠️ **Do not use Kodak for new projects.** This dataset is retained only for historical comparison with older research. See recommendations below.
-
-**Kodak Lossless True Color Image Suite** — 24 images that were the de facto standard benchmark for image compression research from the 1990s through the 2010s.
-
-| Folder | Images | Size |
-|--------|--------|------|
-| `kodak-legacy/` | 24 | 15 MB |
-
-- **Resolution**: 768×512 (or 512×768), 8-bit sRGB
-- **Format**: Lossless PNG
-- **Source**: http://r0k.us/graphics/kodak/
-- **License**: Unrestricted usage (released by Eastman Kodak Company)
-
-> **Why Kodak is deprecated:**
->
-> - **Overfit benchmark**: Decades of codec tuning against these 24 images have made Kodak scores nearly meaningless. Many codecs are specifically optimized for Kodak, so performance on Kodak does not predict real-world quality.
-> - **Resolution mismatch**: 768×512 is far smaller than modern display resolutions, camera output, or typical web images. Compression behavior at this size is not representative of actual usage.
-> - **Content bias**: 24 images of mostly pastoral outdoor scenes circa 1990 do not reflect modern content: smartphone photos, social media, text overlays, UI screenshots, HDR, etc.
-> - **No holdout set**: With only 24 images and no train/test split, any tuning against Kodak is also evaluation against Kodak.
->
-> **Use instead:**
->
-> | Use Case | Recommended Dataset |
-> |----------|---------------------|
-> | Fixed-size comparison (512×512) | [CID22](#cid22) — 250 diverse images with training/validation split |
-> | Variable-size / high-res photos | [CLIC 2025](#clic-2025) — modern high-res photographs (~2048px) |
-> | Compact photographic benchmarks | [GB82](#gb82) — 25 challenging CC0 images at 576×576 |
-> | Screenshots & screen content | [GB82-SC](#gb82-sc) and [QOI `screenshot_web`](#qoi-benchmark-suite) |
->
-> **Screenshot testing is essential** for any codec deployed on the web. Text, UI elements, and graphics compress very differently from photographs — ignoring screen content leads to poor real-world performance.
-
----
-
 ## Format Conformance & Edge Cases
 
 ### JPEG Conformance
@@ -244,7 +209,8 @@ cd qoi-benchmark
 |--------|-------|-------------------|
 | `jpeg-conformance/valid/` | 41 | MUST decode correctly |
 | `jpeg-conformance/invalid/` | 116 | MUST reject gracefully |
-| `jpeg-conformance/non-conformant/` | 20 | MAY reject or recover |
+| `jpeg-conformance/non-conformant/` | 40 | MAY reject or recover |
+| `jpeg-conformance/crash-repro/` | 78 | Crash reproducers from upstream decoders |
 
 **valid/** — Reference JPEG images including camera samples from 12 manufacturers, restart intervals, CMYK/YCCK color spaces, and various sampling configurations.
 
@@ -408,9 +374,6 @@ codec-corpus/
 ├── kadid10k/                    # KADID-10k reference images (Pixabay License)
 │   ├── LICENSE
 │   └── *.png                    # 81 pristine images for IQA research
-├── kodak-legacy/                # Kodak suite — DEPRECATED (Unrestricted)
-│   ├── LICENSE
-│   └── *.png                    # 24 classic images (historical reference only)
 ├── jxl/                         # JPEG XL tests (BSD-3-Clause)
 │   ├── LICENSE
 │   ├── conformance/             # 39 conformance tests
@@ -421,7 +384,8 @@ codec-corpus/
 │   ├── SOURCES.md               # Per-file attribution
 │   ├── valid/                   # 41 files — MUST decode
 │   ├── invalid/                 # 116 files — MUST reject
-│   └── non-conformant/          # 20 files — MAY reject (with .txt descriptions)
+│   ├── non-conformant/          # 40 files — MAY reject (with .txt descriptions)
+│   └── crash-repro/             # 78 crash reproducers from upstream decoders
 ├── pngsuite/                    # PNG conformance (Freeware)
 │   ├── LICENSE
 │   └── *.png                    # 176 images
@@ -462,7 +426,6 @@ Every dataset includes its own license file in its directory.
 | QOI `screenshot_game` | CC BY-SA 3.0 | Yes | **Yes** | **Yes** |
 | QOI `pngimg` | CC BY-NC 4.0 | **No** | **Yes** | No |
 | KADID-10k | Pixabay License | Yes | No | No |
-| Kodak (Legacy) | Unrestricted | Yes | No | No |
 | JXL | BSD-3-Clause | Yes | No | No |
 | PNGSuite | Freeware | Yes | No | No |
 | image-rs | MIT | Yes | No | No |
@@ -487,7 +450,11 @@ Use [GB82-SC](#gb82-sc) and [QOI Benchmark `screenshot_web`](#qoi-benchmark-suit
 **For decoder conformance:**
 Use the format-specific test suites: [JPEG Conformance](#jpeg-conformance), [JXL](#jxl), [PNGSuite](#pngsuite). For fuzz/robustness testing, use [zune-image](#zune-image).
 
-**Do not use Kodak** for modern codec evaluation. It is retained only for historical comparison — see the [deprecation note](#kodak-legacy). For any new benchmarking work, use [CID22](#cid22) (fixed 512×512) or [CLIC 2025](#clic-2025) (variable high-res), and always include screenshot/screen content testing via [GB82-SC](#gb82-sc) or [QOI `screenshot_web`](#qoi-benchmark-suite).
+---
+
+### A note on Kodak
+
+The Kodak Lossless True Color Image Suite (24 images, 768×512) is not included in this corpus. It was the de facto image compression benchmark from the 1990s through the 2010s, but decades of codec tuning against the same 24 images have made Kodak scores nearly meaningless — many codecs are specifically optimized for it. The images are also too small for modern evaluation, too homogeneous (pastoral outdoor scenes circa 1990), and offer no train/test split. Use [CID22](#cid22) or [CLIC 2025](#clic-2025) instead.
 
 ---
 

@@ -14,7 +14,6 @@ Dataset Licenses
 | gb82/ | CC0 1.0 | Yes | No |
 | gb82-sc/ | CC0 1.0 | Yes | No |
 | kadid10k/ | Pixabay License | Yes | No (research citation requested) |
-| kodak-legacy/ | Unrestricted | Yes | No |
 | jxl/ | BSD-3-Clause | Yes | No |
 | pngsuite/ | Freeware | Yes | No |
 | mozjpeg/ | IJG + BSD | Yes | No |
@@ -23,6 +22,7 @@ Dataset Licenses
 | imageflow/ | Various | Yes | Varies |
 | jpeg-conformance/ | MIT/IJG+BSD/Various | Yes | Varies |
 | qoi-benchmark/ | CC0/PD/Mixed | Yes | Varies by subset |
+| webp-conformance/ | Various | Yes | Varies |
 
 Citation Requirements
 ---------------------
