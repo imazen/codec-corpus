@@ -142,13 +142,12 @@ No special setup. The crate handles downloading; the CI cache avoids re-download
 
 ## Dependencies
 
-Three, all small:
+Two Rust crates, both small:
 
 - `dirs` — cross-platform cache directory
-- `tar_light` — `.tar.gz` extraction (pure Rust)
 - `fd-lock` — file locking for concurrent safety
 
-No `reqwest`, `ureq`, `gix`, `serde`, or `toml`.
+Archive extraction uses the system `tar` command. No `reqwest`, `ureq`, `gix`, `serde`, or `toml`.
 
 ## License
 
