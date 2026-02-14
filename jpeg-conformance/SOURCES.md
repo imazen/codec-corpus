@@ -73,6 +73,12 @@ Valid JPEG files that conformant decoders must handle correctly.
 | rst_8block.jpg | Generated | CC0 | Restart interval: 8 MCU blocks |
 | rst_16block.jpg | Generated | CC0 | Restart interval: 16 MCU blocks |
 
+### Progressive + Restart + Subsampling (Generated)
+
+| File | Source | License | Notes |
+|------|--------|---------|-------|
+| progressive_rst_420.jpg | Generated (zenjpeg) | CC0 | Progressive 4:2:0 with DRI, 16x16. Triggers zune-jpeg 0.5 grayscale decode bug. |
+
 ### Color Model Variants
 
 | File | Source | License | Notes |
