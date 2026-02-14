@@ -75,40 +75,32 @@ Any top-level folder in the [codec-corpus repo](https://github.com/imazen/codec-
 
 ### Quality calibration
 
-| Path | Size | Description | License |
-|------|------|-------------|---------|
-| `clic2025/training` | 103 MB | 32 high-res photos for encoder tuning (~2048px) | Unsplash |
-| `clic2025/final-test` | 116 MB | 30 holdout images — final evaluation only | Unsplash |
-| `CID22/CID22-512/training` | — | 209 diverse 512×512 images (Cloudinary) | CC BY-SA 4.0 |
-| `CID22/CID22-512/validation` | — | 41 holdout images | CC BY-SA 4.0 |
-| `kadid10k` | 25 MB | 81 pristine IQA reference images, 512×384 | Pixabay |
-| `gb82` | 9.6 MB | 25 challenging CC0 photos, 576×576 | CC0 |
-| `gb82-sc` | 2.9 MB | 10 screenshots and screen content | CC0 |
-| `qoi-benchmark/screenshot_web` | 39 MB | 14 full-page web screenshots | CC0 |
+| Dataset | Download | Files | Description | License |
+|---------|----------|-------|-------------|---------|
+| `clic2025` | 218 MB | 64 | High-res photos for codec evaluation (~2048px) | Unsplash |
+| `CID22` | 86 MB | 251 | Diverse 512×512 images (209 training + 41 validation) | CC BY-SA 4.0 |
+| `kadid10k` | 25 MB | 82 | Pristine IQA reference images, 512×384 | Pixabay |
+| `gb82` | 9.6 MB | 26 | Challenging CC0 photos, 576×576 | CC0 |
+| `gb82-sc` | 3.0 MB | 11 | Screenshots and screen content | CC0 |
+| `qoi-benchmark` | 39 MB | 18 | Full-page web screenshots | CC0 |
 
 ### Format conformance
 
-| Path | Size | Description | License |
-|------|------|-------------|---------|
-| `jpeg-conformance/valid` | — | 41 JPEG files that MUST decode correctly | MIT/IJG+BSD |
-| `jpeg-conformance/invalid` | — | 116 files that MUST be rejected gracefully | MIT/IJG+BSD |
-| `jpeg-conformance/non-conformant` | — | 20 spec-violating files common in the wild | MIT/IJG+BSD |
-| `jxl/conformance` | 6.2 MB | Official libjxl conformance tests | BSD-3-Clause |
-| `jxl/features` | 81 MB | JPEG XL feature coverage (HDR, animation, etc.) | BSD-3-Clause |
-| `pngsuite` | 720 KB | 176 PNG conformance tests (all color types, depths) | Freeware |
-| `webp-conformance/valid` | — | WebP files that MUST decode correctly | Various |
-| `webp-conformance/invalid` | — | WebP files that MUST be rejected | Various |
+| Dataset | Download | Files | Description | License |
+|---------|----------|-------|-------------|---------|
+| `jpeg-conformance` | 76 MB | 277 | 41 valid, 116 invalid, 40 non-conformant, 78 crash repros | MIT/IJG+BSD |
+| `jxl` | 577 MB | 372 | Conformance, features, edge cases, photographic, reference | BSD-3-Clause |
+| `pngsuite` | 720 KB | 178 | Official PNG conformance tests (all color types, depths) | Freeware |
+| `webp-conformance` | 1.3 MB | 230 | 225 valid WebP files + sources | Various |
 
 ### Decoder robustness
 
-| Path | Size | Description | License |
-|------|------|-------------|---------|
-| `image-rs/test-images` | 4.5 MB | Multi-format edge cases (BMP, GIF, JPEG, PNG, TIFF, WebP) | MIT |
-| `zune/test-images/jpeg` | — | JPEG edge cases (CMYK, progressive, subsampling) | MIT/Apache-2.0/Zlib |
-| `zune/fuzz-corpus/jpeg` | — | 1,836 minimal JPEG fuzz inputs | MIT/Apache-2.0/Zlib |
-| `zune/fuzz-corpus/png` | — | 837 minimal PNG fuzz inputs | MIT/Apache-2.0/Zlib |
-| `mozjpeg` | 1.2 MB | MozJPEG encoder reference files | IJG + BSD |
-| `imageflow/test_inputs` | 7.8 MB | Orientation, format conversion edge cases | Various |
+| Dataset | Download | Files | Description | License |
+|---------|----------|-------|-------------|---------|
+| `zune` | 33 MB | 3,434 | Fuzz corpus (1,836 JPEG + 837 PNG) and test images | MIT/Apache-2.0/Zlib |
+| `image-rs` | 4.5 MB | 127 | Multi-format edge cases (BMP, GIF, JPEG, PNG, TIFF, WebP) | MIT |
+| `imageflow` | 7.8 MB | 51 | Orientation, format conversion edge cases | Various |
+| `mozjpeg` | 1.2 MB | 16 | MozJPEG encoder reference files | IJG + BSD |
 
 Full dataset descriptions and per-file attribution: [codec-corpus README](https://github.com/imazen/codec-corpus#readme).
 

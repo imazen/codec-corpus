@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create release with dataset tarballs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Create per-dataset tarballs
+        run: |
+          for dataset in */; do
+            dataset="${dataset%/}"
+            [[ "$dataset" == .* || "$dataset" == crate ]] && continue
+            echo "Packing $dataset..."
+            tar czf "${dataset}.tar.gz" "${dataset}/"
+          done
+          ls -lh *.tar.gz
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" *.tar.gz \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
