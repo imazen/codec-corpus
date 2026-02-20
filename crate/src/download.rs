@@ -26,14 +26,13 @@ pub(crate) fn try_git_sparse_checkout(
 
     // Try the versioned tag first, then fall back to default branch.
     let tag = format!("v{version}");
-    let cloned = try_git_clone(repo_url, &tmp_dir, Some(&tag))
-        .or_else(|_| {
-            eprintln!(
-                "codec-corpus: warning: tag '{tag}' not found, falling back to default branch. \
+    let cloned = try_git_clone(repo_url, &tmp_dir, Some(&tag)).or_else(|_| {
+        eprintln!(
+            "codec-corpus: warning: tag '{tag}' not found, falling back to default branch. \
                  Data may not match crate version {version}."
-            );
-            try_git_clone(repo_url, &tmp_dir, None)
-        });
+        );
+        try_git_clone(repo_url, &tmp_dir, None)
+    });
 
     if cloned.is_err() {
         let _ = std::fs::remove_dir_all(&tmp_dir);
@@ -99,19 +98,13 @@ fn try_git_clone(repo_url: &str, dest: &Path, branch: Option<&str>) -> Result<()
 ///
 /// `folder` is the top-level directory name. The tarball is always named
 /// `{folder}.tar.gz` in the release assets.
-pub(crate) fn try_http_download(
-    root: &Path,
-    folder: &str,
-    version: &str,
-) -> Result<(), Error> {
+pub(crate) fn try_http_download(root: &Path, folder: &str, version: &str) -> Result<(), Error> {
     let url = format!(
         "https://github.com/imazen/codec-corpus/releases/download/v{version}/{folder}.tar.gz"
     );
 
     let tmp_tar = temp_tar_path(root);
-    let downloaded = try_curl(&url, &tmp_tar)
-        .or_else(|_| try_wget(&url, &tmp_tar))
-        .or_else(|_| try_powershell(&url, &tmp_tar));
+    let downloaded = download_file(&url, &tmp_tar);
 
     if downloaded.is_err() {
         let _ = std::fs::remove_file(&tmp_tar);
@@ -136,9 +129,7 @@ pub(crate) fn try_http_download(
 
     if !matches!(tar_status, Ok(s) if s.success()) {
         let _ = std::fs::remove_dir_all(&tmp_extract);
-        return Err(Error::Io(std::io::Error::other(
-            "tar extraction failed",
-        )));
+        return Err(Error::Io(std::io::Error::other("tar extraction failed")));
     }
 
     let src = tmp_extract.join(folder);
@@ -154,6 +145,18 @@ pub(crate) fn try_http_download(
 
     let _ = std::fs::remove_dir_all(&tmp_extract);
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Generic file download (curl → wget → powershell fallback)
+// ---------------------------------------------------------------------------
+
+/// Download a file from `url` to `dest` using whatever HTTP client is
+/// available on the system (curl, wget, or PowerShell).
+pub(crate) fn download_file(url: &str, dest: &Path) -> Result<(), Error> {
+    try_curl(url, dest)
+        .or_else(|_| try_wget(url, dest))
+        .or_else(|_| try_powershell(url, dest))
 }
 
 // ---------------------------------------------------------------------------

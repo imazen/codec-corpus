@@ -19,6 +19,14 @@
 #![forbid(unsafe_code)]
 
 mod download;
+mod manifest;
+mod manifest_corpus;
+
+pub use manifest::{ExpectedBehavior, IssueInfo, ManifestEntry};
+pub use manifest_corpus::{
+    DEFAULT_BLOB_BASE_URL, DEFAULT_MANIFEST_URL, ENV_BASE_URL, ENV_MANIFEST, FetchedBlob, Filter,
+    ManifestCorpus,
+};
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -46,6 +54,10 @@ pub enum Error {
     Io(std::io::Error),
     /// No cache directory could be determined.
     NoCacheDir,
+    /// Failed to parse the JSONL manifest.
+    ManifestParse(String),
+    /// Failed to fetch a blob from the content-addressable store.
+    BlobFetch { sha256: String },
 }
 
 impl std::fmt::Display for Error {
@@ -59,6 +71,10 @@ impl std::fmt::Display for Error {
             }
             Error::Io(e) => write!(f, "I/O error: {e}"),
             Error::NoCacheDir => write!(f, "could not determine cache directory"),
+            Error::ManifestParse(msg) => write!(f, "manifest parse error: {msg}"),
+            Error::BlobFetch { sha256 } => {
+                write!(f, "failed to fetch blob: {sha256}")
+            }
         }
     }
 }
@@ -182,10 +198,7 @@ impl Corpus {
     // -----------------------------------------------------------------------
 
     fn init(base: PathBuf) -> Result<Self, Error> {
-        let major = CRATE_VERSION
-            .split('.')
-            .next()
-            .unwrap_or("0");
+        let major = CRATE_VERSION.split('.').next().unwrap_or("0");
         let root = base.join("codec-corpus").join(format!("v{major}"));
         std::fs::create_dir_all(&root).map_err(Error::Io)?;
         Ok(Self { root })
@@ -220,13 +233,9 @@ impl Corpus {
 
         // Git sparse-checks out just the folder; HTTP downloads the
         // root-folder tarball (which may include sibling paths).
-        let download_result = download::try_git_sparse_checkout(
-            &self.root,
-            folder,
-            CRATE_VERSION,
-            REPO_URL,
-        )
-        .or_else(|_| download::try_http_download(&self.root, folder, CRATE_VERSION));
+        let download_result =
+            download::try_git_sparse_checkout(&self.root, folder, CRATE_VERSION, REPO_URL)
+                .or_else(|_| download::try_http_download(&self.root, folder, CRATE_VERSION));
 
         cleanup_old_temps(&self.root);
         download_result?;
@@ -312,7 +321,10 @@ mod tests {
     #[test]
     fn test_top_level_folder() {
         assert_eq!(top_level_folder("webp-conformance"), "webp-conformance");
-        assert_eq!(top_level_folder("webp-conformance/valid"), "webp-conformance");
+        assert_eq!(
+            top_level_folder("webp-conformance/valid"),
+            "webp-conformance"
+        );
         assert_eq!(top_level_folder("clic2025/training/subdir"), "clic2025");
     }
 
