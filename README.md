@@ -458,6 +458,21 @@ The Kodak Lossless True Color Image Suite (24 images, 768×512) is not included 
 
 ---
 
+## Color Space Normalization
+
+All benchmark PNG images in this corpus use the standard `sRGB` PNG chunk to signal sRGB color space. As of February 2025, the following corrections were applied:
+
+- **clic2025-1024/**, **clic2025/training/**, **imageflow/test_inputs/frymire.png**: Stripped `gAMA`+`cHRM` chunks (which encoded sRGB gamma and primaries the old way) and replaced with a proper `sRGB` chunk.
+- **CID22/**: Stripped embedded `iCCP` profiles (which were sRGB IEC61966-2.1 profiles under generic names like "icc", ~2.6 KB each) and replaced with a proper `sRGB` chunk.
+- **CID22/CID22-512/training/2387532.png**: Had `gAMA`-only (no chromaticities); renamed to `2387532-srgb.png` after normalization.
+- **imageflow/test_inputs/gradients.png**: Stripped `iCCP` (Photoshop-named sRGB profile) and replaced with `sRGB` chunk.
+
+No pixel data was changed — only PNG chunk metadata was modified. This eliminates inconsistent color space signaling that can cause subtle differences in color-managed decoders and metric calculations.
+
+Datasets **not** modified: `gb82/`, `gb82-sc/`, `kadid10k/`, `qoi-benchmark/`, `clic2025/final-test/`, `webp-conformance/` (already clean — either proper `sRGB` chunks or no color metadata). Test/conformance directories (`pngsuite/`, `zune/`, `image-rs/`) were intentionally left untouched.
+
+---
+
 ## Contributing
 
 To suggest additional datasets, please open an issue with:
