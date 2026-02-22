@@ -123,6 +123,10 @@ RLE edge cases, and uncommon compression types.
 
 | File | Description |
 |------|-------------|
+| badbitssize.bmp | Invalid image data size field (non-critical, pixels correct) |
+| baddens1.bmp | Invalid horizontal resolution (non-critical, pixels correct) |
+| baddens2.bmp | Invalid vertical resolution (non-critical, pixels correct) |
+| badfilesize.bmp | File size field doesn't match actual size (non-critical, pixels correct) |
 | pal1p1.bmp | 1-bit, 1-entry palette (ambiguous) |
 | pal1hufflsb.bmp | 1-bit Huffman 1D LSB (OS/2) |
 | pal1huffmsb.bmp | 1-bit Huffman 1D MSB (OS/2) |
@@ -167,7 +171,6 @@ RLE edge cases, and uncommon compression types.
 | rgb32bf-rgba.bmp | 32-bit RGBA bitfield layout |
 | hopper_rle8_row_overflow.bmp | RLE with row overflow |
 | pal8_offset.bmp | 8-bit with non-standard offset |
-| l2rgb_read.bmp | Minimal luminance-to-RGB test |
 | mmap_error.bmp | Memory mapping edge case |
 
 ---
@@ -182,15 +185,12 @@ without panicking or producing incorrect output.
 | File | Description |
 |------|-------------|
 | badbitcount.bmp | Invalid bits-per-pixel value |
-| badbitssize.bmp | Invalid image data size field |
-| baddens1.bmp | Invalid horizontal resolution |
-| baddens2.bmp | Invalid vertical resolution |
-| badfilesize.bmp | File size field doesn't match actual size |
 | badheadersize.bmp | Invalid info header size |
 | badpalettesize.bmp | Invalid palette size |
 | badplanes.bmp | Planes field != 1 |
 | badrle.bmp | Corrupt RLE compressed data |
 | badwidth.bmp | Invalid width value |
+| l2rgb_read.bmp | Truncated/malformed file (bogus header fields) |
 | pal8badindex.bmp | Palette index out of range |
 | reallybig.bmp | Unreasonably large dimensions |
 | rletopdown.bmp | Top-down with RLE (forbidden by spec) |
