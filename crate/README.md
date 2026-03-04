@@ -88,6 +88,7 @@ Any top-level folder in the [codec-corpus repo](https://github.com/imazen/codec-
 
 | Dataset | Download | Files | Description | License |
 |---------|----------|-------|-------------|---------|
+| `bmp-conformance` | 2.1 MB | 126 | BMP spec conformance (valid, invalid, non-conformant, crash repros) | MIT |
 | `jpeg-conformance` | 76 MB | 277 | 41 valid, 116 invalid, 40 non-conformant, 78 crash repros | MIT/IJG+BSD |
 | `jxl` | 88 MB | 188 | Conformance, features, edge cases, photographic | BSD-3-Clause |
 | `png-conformance` | 1.7 MB | 11 | Real-world PNG edge cases (decompressor crashes, filter bugs) | Various |
