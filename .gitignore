@@ -6,6 +6,9 @@
 # Resized/derived datasets (generated locally)
 clic2025-1024/
 
+# Local symlink alias (final-test/ is the canonical name)
+clic2025/validation
+
 # QOI benchmark downloaded subsets (fetched by download scripts)
 qoi-benchmark/icon_512/
 qoi-benchmark/icon_64/
