@@ -42,6 +42,7 @@ git sparse-checkout add CID22 gb82-sc qoi-benchmark
 | [JPEG Conformance](#jpeg-conformance) | 277 | 76 MB | MIT/IJG+BSD/Various | JPEG decoder conformance & robustness |
 | [JXL](#jxl) | 188 | 88 MB | BSD-3-Clause | JPEG XL decoder conformance |
 | [PNGSuite](#pngsuite) | 178 | 720 KB | Freeware | PNG decoder conformance |
+| [TIFF Conformance](#tiff-conformance) | 154 | 12 MB | MIT/CC0/libtiff/Various | TIFF decoder conformance & robustness |
 | [WebP Conformance](#webp-conformance) | 230 | 1.3 MB | Various | WebP decoder conformance |
 | [image-rs](#image-rs) | 127 | 4.5 MB | MIT | Multi-format edge cases |
 | [zune-image](#zune-image) | 3,434 | 33 MB | MIT/Apache-2.0/Zlib | Fuzz testing, decoder robustness |
@@ -273,6 +274,31 @@ Coverage:
 
 ---
 
+### TIFF Conformance
+
+**TIFF Decoder Conformance Test Suite** — 154 files covering comprehensive TIFF feature combinations, sourced from libtiff, image-tiff, and image-rs test suites.
+
+| Folder | Files | Size | Purpose |
+|--------|-------|------|---------|
+| `tiff-conformance/valid/` | 145 | 12 MB | MUST decode correctly |
+| `tiff-conformance/edge-cases/` | 5 | 64 KB | Uncommon but valid features |
+| `tiff-conformance/robustness/` | 4 | 24 KB | Malformed files — MUST reject gracefully |
+
+Coverage:
+- Color types: grayscale, grayscale+alpha, RGB, CMYK, palette, YCbCr, LogLuv
+- Bit depths: 1–64 bit integer and float (f16, f32, f64)
+- Compression: uncompressed, LZW, deflate, PackBits, CCITT fax3/fax4, JPEG, old JPEG, zstd, WebP, LogLuv
+- Organization: stripped, tiled (square/rectangular/oversized), planar
+- Predictors: none, horizontal, floating-point
+- Byte order: little-endian and big-endian
+- Format: classic TIFF and BigTIFF
+- Features: EXIF/GPS, XMP, SubIFDs, multi-page, extra samples, GeoTIFF
+
+- **Sources**: See [tiff-conformance/SOURCES.md](tiff-conformance/SOURCES.md) for per-file attribution
+- **License**: MIT / CC0 / libtiff (permissive) / Various (per source)
+
+---
+
 ### image-rs
 
 **Rust image library test images** — Multi-format edge cases and malformed files used by the [image-rs](https://github.com/image-rs/image) crate.
@@ -389,6 +415,12 @@ codec-corpus/
 ├── pngsuite/                    # PNG conformance (Freeware)
 │   ├── LICENSE
 │   └── *.png                    # 176 images
+├── tiff-conformance/            # TIFF conformance (MIT/CC0/libtiff/Various)
+│   ├── README.md
+│   ├── SOURCES.md               # Per-file attribution
+│   ├── valid/                   # 145 files — MUST decode
+│   ├── edge-cases/              # 5 files — uncommon but valid
+│   └── robustness/              # 4 files — MUST reject gracefully
 ├── image-rs/                    # image-rs tests (MIT)
 │   ├── LICENSE-MIT
 │   └── test-images/
@@ -428,6 +460,7 @@ Every dataset includes its own license file in its directory.
 | KADID-10k | Pixabay License | Yes | No | No |
 | JXL | BSD-3-Clause | Yes | No | No |
 | PNGSuite | Freeware | Yes | No | No |
+| TIFF Conformance | MIT/CC0/libtiff/Various | Yes | Varies | No |
 | image-rs | MIT | Yes | No | No |
 | zune-image | MIT/Apache-2.0/Zlib | Yes | No | No |
 | mozjpeg | IJG + BSD | Yes | No | No |
