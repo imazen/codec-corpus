@@ -1,1 +1,12 @@
 .github/workflows/*.lock.yml linguist-generated=true merge=ours
+
+# Git LFS tracking for large RAW/DNG files
+raw-conformance/valid/**/*.cr2 filter=lfs diff=lfs merge=lfs -text
+raw-conformance/valid/**/*.cr3 filter=lfs diff=lfs merge=lfs -text
+raw-conformance/valid/**/*.nef filter=lfs diff=lfs merge=lfs -text
+raw-conformance/valid/**/*.arw filter=lfs diff=lfs merge=lfs -text
+raw-conformance/valid/**/*.orf filter=lfs diff=lfs merge=lfs -text
+raw-conformance/valid/**/*.rw2 filter=lfs diff=lfs merge=lfs -text
+raw-conformance/valid/**/*.raf filter=lfs diff=lfs merge=lfs -text
+raw-conformance/valid/**/*.dng filter=lfs diff=lfs merge=lfs -text
+raw-conformance/valid/**/*.DNG filter=lfs diff=lfs merge=lfs -text

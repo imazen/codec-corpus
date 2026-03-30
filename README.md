@@ -2,7 +2,7 @@
 
 A curated collection of reference images for codec quality calibration, compression benchmarking, and format conformance testing. Maintained by [Imazen](https://github.com/imazen).
 
-Total repo size: ~577 MB committed, plus ~1 GB available via download scripts.
+Total repo size: ~670 MB committed, plus ~1 GB available via download scripts.
 
 ## Quick Start
 
@@ -39,11 +39,20 @@ git sparse-checkout add CID22 gb82-sc qoi-benchmark
 
 | Dataset | Files | Size | License | Best For |
 |---------|-------|------|---------|----------|
+| [AVIF Conformance](#avif-conformance) | 137 | 33 MB | BSD-2/CC-BY-SA/Apache | AVIF decoder conformance, HDR, gain maps |
+| [HEIC Conformance](#heic-conformance) | 173 | 29 MB | MIT/LGPL/Various | HEIC/HEIF decoder conformance |
 | [JPEG Conformance](#jpeg-conformance) | 277 | 76 MB | MIT/IJG+BSD/Various | JPEG decoder conformance & robustness |
 | [JXL](#jxl) | 188 | 88 MB | BSD-3-Clause | JPEG XL decoder conformance |
 | [PNGSuite](#pngsuite) | 178 | 720 KB | Freeware | PNG decoder conformance |
+| [APNG Conformance](#apng-conformance) | 31 | 184 KB | CC0 | Animated PNG conformance |
+| [GIF Conformance](#gif-conformance) | 39 | 208 KB | CC0 | GIF animation conformance |
 | [TIFF Conformance](#tiff-conformance) | 154 | 12 MB | MIT/CC0/libtiff/Various | TIFF decoder conformance & robustness |
 | [WebP Conformance](#webp-conformance) | 230 | 1.3 MB | Various | WebP decoder conformance |
+| [BMP Conformance](#bmp-conformance) | 126 | — | Various | BMP decoder conformance |
+| [PNM Conformance](#pnm-conformance) | 51 | 260 KB | CC0 | PBM/PGM/PPM/PAM conformance |
+| [Farbfeld Conformance](#farbfeld-conformance) | 24 | 156 KB | CC0 | Farbfeld decoder conformance |
+| [UltraHDR Conformance](#ultrahdr-conformance) | 55 | 32 MB | MIT/Apache/CC-BY | HDR gain map conformance (JPEG/AVIF/JXL) |
+| [RAW/DNG Conformance](#rawdng-conformance) | — | Git LFS | CC0 | Camera RAW decoder conformance |
 | [image-rs](#image-rs) | 127 | 4.5 MB | MIT | Multi-format edge cases |
 | [zune-image](#zune-image) | 3,434 | 33 MB | MIT/Apache-2.0/Zlib | Fuzz testing, decoder robustness |
 | [mozjpeg](#mozjpeg) | 16 | 1.2 MB | IJG + BSD | JPEG codec reference files |
@@ -202,6 +211,44 @@ cd qoi-benchmark
 
 ## Format Conformance & Edge Cases
 
+### AVIF Conformance
+
+**AVIF Decoder Conformance Test Suite** — 137 files covering all AV1 Image File Format features, sourced from AOM test vectors.
+
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `avif-conformance/valid/` | 106 | MUST decode correctly |
+| `avif-conformance/invalid/` | 12 | MUST reject gracefully |
+| `avif-conformance/edge-cases/` | 19 | Decoder-dependent behavior |
+
+Feature coverage: All 3 AV1 profiles, YUV 4:2:0/4:2:2/4:4:4, 8/10/12-bit depth, monochrome, alpha (full/limited range), HDR (PQ), wide color gamut (P3, BT.2020), gain maps, animation, grids, film grain, transforms (rotation/mirror/crop), ICC profiles, EXIF/XMP metadata.
+
+- **Sources**: [AOMediaCodec/av1-avif](https://github.com/AOMediaCodec/av1-avif), [AOMediaCodec/libavif](https://github.com/AOMediaCodec/libavif), [link-u/avif-sample-images](https://github.com/niclas-niclas/avif-sample-images)
+- **License**: BSD-2-Clause (AOM), CC-BY-SA 4.0 (Apple/Xiph), CC-BY-NC-ND 4.0 (Netflix)
+
+---
+
+### HEIC Conformance
+
+**HEIC/HEIF Decoder Conformance Test Suite** — 173 files covering the High Efficiency Image File Format.
+
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `heic-conformance/valid/nokia-conformance/` | 63 | MUST decode correctly (⚠️ no explicit license) |
+| `heic-conformance/valid/dsoprea-exif/` | 4 | MUST decode correctly |
+| `heic-conformance/valid/libheif-testdata/` | 90 | MUST decode correctly |
+| `heic-conformance/invalid/` | 8 | MUST reject gracefully |
+| `heic-conformance/edge-cases/` | 5 | Decoder-dependent behavior |
+
+Coverage: HEIC still images, grid images (iPhone-style multi-tile), alpha channel, EXIF metadata, thumbnails, multiple images per file, overlays, stereo, sequences, edit lists.
+
+⚠️ **License note**: Nokia conformance files (63 files, the most feature-complete) have **no explicit license**. Use for internal testing only until clarified. dsoprea samples are MIT. libheif test data is LGPL-3.0.
+
+- **Sources**: [nokiatech/heif_conformance](https://github.com/nokiatech/heif_conformance), [dsoprea/heic-exif-samples](https://github.com/dsoprea/heic-exif-samples), [strukturag/libheif](https://github.com/strukturag/libheif)
+- **License**: No license (Nokia) / MIT (dsoprea) / LGPL-3.0 (libheif)
+
+---
+
 ### JPEG Conformance
 
 **JPEG Decoder Conformance Test Suite** — Files organized by expected decoder behavior, designed for systematic testing of JPEG decoders.
@@ -274,6 +321,41 @@ Coverage:
 
 ---
 
+### APNG Conformance
+
+**Animated PNG Conformance Test Suite** — 31 generated APNG files covering all animation features.
+
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `apng-conformance/valid/` | 22 | MUST decode correctly |
+| `apng-conformance/invalid/` | 6 | MUST reject gracefully |
+| `apng-conformance/edge/` | 3 | Decoder-dependent behavior |
+
+Coverage: All 3 disposal operations (none, background, previous), both blend operations (source, over), frame offsets, looping (infinite, once, N), timing variations (10ms–2s, variable), color types (RGBA, RGB, grayscale, palette), default-image-as-first-frame vs separate fallback, single-frame APNG.
+
+- **Source**: Generated (`generate.py`), Python stdlib only
+- **License**: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) — Public domain
+- **Spec**: [APNG Specification](https://wiki.mozilla.org/APNG_Specification)
+
+---
+
+### GIF Conformance
+
+**GIF Animation Conformance Test Suite** — 39 generated GIF89a files with full LZW compression.
+
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `gif-conformance/valid/` | 28 | MUST decode correctly |
+| `gif-conformance/invalid/` | 7 | MUST reject gracefully |
+| `gif-conformance/edge-cases/` | 4 | Decoder-dependent behavior |
+
+Coverage: All disposal methods (none, background, previous, unspecified), transparency, timing (0-delay to 1s, variable), looping (infinite, once, N, no Netscape extension), local vs global color tables, interlacing, frame offsets, canvas/frame geometry, GIF87a vs GIF89a, comment/plain-text extensions.
+
+- **Source**: Generated (`generate.py`), Python stdlib only (includes complete LZW encoder)
+- **License**: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) — Public domain
+
+---
+
 ### TIFF Conformance
 
 **TIFF Decoder Conformance Test Suite** — 154 files covering comprehensive TIFF feature combinations, sourced from libtiff, image-tiff, and image-rs test suites.
@@ -296,6 +378,120 @@ Coverage:
 
 - **Sources**: See [tiff-conformance/SOURCES.md](tiff-conformance/SOURCES.md) for per-file attribution
 - **License**: MIT / CC0 / libtiff (permissive) / Various (per source)
+
+---
+
+### WebP Conformance
+
+**WebP Decoder Conformance Test Suite** — 225+ synthetic test files plus real-world WebP images.
+
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `webp-conformance/valid/` | 225+ | MUST decode correctly |
+
+- **Source**: Generated (RFC 6386 parameter space) + real-world samples
+- **License**: Various (per source)
+
+---
+
+### BMP Conformance
+
+**BMP Decoder Conformance Test Suite** — 126 files covering BMP format variants.
+
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `bmp-conformance/valid/` | — | MUST decode correctly |
+| `bmp-conformance/invalid/` | — | MUST reject gracefully |
+| `bmp-conformance/non-conformant/` | — | MAY reject or recover |
+
+- **Sources**: See [bmp-conformance/SOURCES.md](bmp-conformance/SOURCES.md) for per-file attribution
+- **License**: Various (per source)
+
+---
+
+### PNM Conformance
+
+**PNM/PAM Decoder Conformance Test Suite** — 51 generated files covering all 7 Netpbm sub-formats.
+
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `pnm-conformance/valid/pbm/` | 10 | PBM P1 (ASCII) + P4 (binary) — MUST decode |
+| `pnm-conformance/valid/pgm/` | 8 | PGM P2 (ASCII) + P5 (binary) — MUST decode |
+| `pnm-conformance/valid/ppm/` | 11 | PPM P3 (ASCII) + P6 (binary) — MUST decode |
+| `pnm-conformance/valid/pam/` | 6 | PAM P7 (all tuple types) — MUST decode |
+| `pnm-conformance/invalid/` | 10 | MUST reject gracefully |
+| `pnm-conformance/edge-cases/` | 6 | Decoder-dependent behavior |
+
+Coverage: All magic numbers (P1–P7), 8-bit and 16-bit, comments in headers, maxval edge values (0, 1, 65535, 70000), truncated data, CRLF line endings, concatenated streams, overflow dimensions.
+
+- **Source**: Generated (`generate.py`), Python stdlib only
+- **License**: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) — Public domain
+- **Spec**: [Netpbm format specification](https://netpbm.sourceforge.net/doc/)
+
+---
+
+### Farbfeld Conformance
+
+**Farbfeld Decoder Conformance Test Suite** — 24 generated files for the suckless.org image format.
+
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `farbfeld-conformance/valid/` | 12 | MUST decode correctly |
+| `farbfeld-conformance/invalid/` | 9 | MUST reject gracefully |
+| `farbfeld-conformance/edge-cases/` | 3 | Decoder-dependent behavior |
+
+Coverage: Various dimensions (1x1 to 1000x1), solid colors, gradients, checkerboards, alpha channel variants, bad magic, truncated headers/pixels, zero dimensions, extra trailing data.
+
+- **Source**: Generated (`generate.py`), Python stdlib only
+- **License**: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) — Public domain
+- **Spec**: [Farbfeld specification](https://tools.suckless.org/farbfeld/)
+
+---
+
+### UltraHDR Conformance
+
+**UltraHDR / Gain Map Conformance Test Suite** — 55 files covering HDR gain maps across JPEG, AVIF, and JXL.
+
+| Folder | Files | Expected Behavior |
+|--------|-------|-------------------|
+| `ultrahdr-conformance/valid/jpeg/` | 43 | MUST decode correctly |
+| `ultrahdr-conformance/valid/avif/` | — | (empty — no freely-licensed samples yet) |
+| `ultrahdr-conformance/valid/jxl/` | — | (empty — no freely-licensed samples yet) |
+| `ultrahdr-conformance/invalid/` | 5 | MUST reject gracefully |
+| `ultrahdr-conformance/edge-cases/` | 3 | Decoder-dependent behavior |
+
+Sources include Google's libultrahdr benchmark/test images, Pixel phone UltraHDR samples, and the Awesome-Gain-Maps collection. Covers ISO 21496-1 gain map metadata, various gain map encodings, and different transfer functions.
+
+- **Sources**: [google/libultrahdr](https://github.com/google/libultrahdr), [NMoroney/Awesome-Gain-Maps](https://github.com/NMoroney/Awesome-Gain-Maps), [MishaalRahmanGH/Ultra_HDR_Samples](https://github.com/MishaalRahmanGH/Ultra_HDR_Samples)
+- **License**: Apache-2.0 (Google) / MIT (Awesome-Gain-Maps) / CC-BY-4.0 (Pixel samples, libultrahdr test data)
+
+---
+
+### RAW/DNG Conformance
+
+**Camera RAW Conformance Test Suite** — RAW and DNG files from diverse camera families. Stored with **Git LFS** due to file sizes (10-50 MB each).
+
+⚠️ **Requires Git LFS**: Run `git lfs pull` after cloning to download the actual RAW files.
+
+| Folder | Content |
+|--------|---------|
+| `raw-conformance/valid/bayer/` | Standard Bayer CFA (Canon CR2, Nikon NEF, Sony ARW, DNG) |
+| `raw-conformance/valid/xtrans/` | X-Trans CFA (Fuji RAF) |
+| `raw-conformance/valid/linear/` | Linear (demosaiced) DNG |
+| `raw-conformance/valid/compressed/` | Lossy DNG (type 34892), JXL DNG (type 52546) |
+| `raw-conformance/valid/mobile/` | Apple ProRAW, Android DNG |
+| `raw-conformance/valid/proprietary/` | ORF, RW2, CR3 |
+| `raw-conformance/invalid/` | Truncated, corrupt headers, bad IFDs |
+| `raw-conformance/edge-cases/` | Unusual bit depths, tiled, multi-page |
+
+To populate from the raw.pixls.us archive:
+
+```bash
+cd raw-conformance && ./fetch.sh
+```
+
+- **Source**: [raw.pixls.us](https://raw.pixls.us/) CC0-licensed camera samples
+- **License**: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) — Public domain
 
 ---
 
@@ -376,69 +572,53 @@ Includes: corrupt JPEG, color profile edge cases, transparency, gradients, white
 
 ```
 codec-corpus/
-├── clic2025/                    # CLIC 2025 (Unsplash License)
-│   ├── LICENSE
-│   ├── README.md                # Original naming & download links
-│   ├── training/                # 32 high-res images (CLIC calls this "validation")
-│   └── final-test/              # 30 high-res images (CLIC calls this "test")
-├── CID22/                       # Cloudinary CID22 (CC BY-SA 4.0)
-│   ├── LICENSE
-│   └── CID22-512/
-│       ├── validation/          # 41 images
-│       └── training/            # 209 images
-├── gb82/                        # GB82 photographic (CC0)
-│   ├── LICENSE
-│   └── *.png                    # 25 images
-├── gb82-sc/                     # GB82 screen content (CC0)
-│   ├── LICENSE
-│   └── *.png                    # 10 screenshots
-├── qoi-benchmark/               # QOI Benchmark Suite (CC0/PD/Mixed)
-│   ├── README.md
-│   ├── download.sh              # Fetch additional subsets (bash)
-│   ├── download.ps1             # Fetch additional subsets (PowerShell)
-│   └── screenshot_web/          # 14 web page screenshots (CC0)
-├── kadid10k/                    # KADID-10k reference images (Pixabay License)
-│   ├── LICENSE
-│   └── *.png                    # 81 pristine images for IQA research
-├── jxl/                         # JPEG XL tests (BSD-3-Clause)
-│   ├── LICENSE
-│   ├── conformance/             # 39 conformance tests
-│   ├── features/                # 128 feature tests
-│   └── edge-cases/              # 13 boundary tests
-├── jpeg-conformance/            # JPEG conformance (MIT/IJG+BSD/Various)
-│   ├── README.md
-│   ├── SOURCES.md               # Per-file attribution
-│   ├── valid/                   # 41 files — MUST decode
-│   ├── invalid/                 # 116 files — MUST reject
-│   ├── non-conformant/          # 40 files — MAY reject (with .txt descriptions)
-│   └── crash-repro/             # 78 crash reproducers from upstream decoders
-├── pngsuite/                    # PNG conformance (Freeware)
-│   ├── LICENSE
-│   └── *.png                    # 176 images
-├── tiff-conformance/            # TIFF conformance (MIT/CC0/libtiff/Various)
-│   ├── README.md
-│   ├── SOURCES.md               # Per-file attribution
-│   ├── valid/                   # 145 files — MUST decode
-│   ├── edge-cases/              # 5 files — uncommon but valid
-│   └── robustness/              # 4 files — MUST reject gracefully
-├── image-rs/                    # image-rs tests (MIT)
-│   ├── LICENSE-MIT
-│   └── test-images/
-│       ├── bmp/, gif/, ico/
-│       ├── jpg/, png/
-│       ├── tiff/, webp/
-├── zune/                        # zune-image tests (MIT/Apache-2.0/Zlib)
-│   ├── LICENSE-MIT, LICENSE-APACHE, LICENSE-ZLIB
-│   ├── test-images/jpeg/
-│   └── fuzz-corpus/
-│       ├── jpeg/, png/, inflate/
-├── mozjpeg/                     # mozjpeg tests (IJG + BSD)
-│   ├── LICENSE
-│   └── *.ppm, *.jpg, *.bmp, *.icc
-└── imageflow/                   # imageflow tests (Various)
-    └── test_inputs/
-        ├── orientation/         # 16 EXIF orientation tests
-        └── *.jpg, *.png, *.webp, *.gif
+├── Quality Calibration
+│   ├── clic2025/                    # CLIC 2025 (Unsplash License)
+│   ├── CID22/                       # Cloudinary CID22 (CC BY-SA 4.0)
+│   ├── gb82/                        # GB82 photographic (CC0)
+│   ├── gb82-sc/                     # GB82 screen content (CC0)
+│   ├── kadid10k/                    # KADID-10k references (Pixabay License)
+│   └── qoi-benchmark/              # QOI Benchmark Suite (CC0/PD/Mixed)
+│
+├── Format Conformance (modern codecs)
+│   ├── avif-conformance/            # AVIF — 137 files (BSD-2/CC-BY-SA/Apache)
+│   │   ├── valid/, invalid/, edge-cases/, README.md
+│   ├── heic-conformance/            # HEIC/HEIF — 173 files (MIT/LGPL/⚠️ Nokia unlicensed)
+│   │   ├── valid/{nokia-conformance,dsoprea-exif,libheif-testdata}/
+│   │   ├── invalid/, edge-cases/, README.md
+│   ├── jxl/                         # JPEG XL — 188 files (BSD-3-Clause)
+│   │   ├── conformance/, features/, edge-cases/
+│   └── ultrahdr-conformance/        # UltraHDR gain maps — 55 files (MIT/Apache/CC-BY)
+│       ├── valid/{jpeg,avif,jxl}/, invalid/, edge-cases/, README.md
+│
+├── Format Conformance (traditional codecs)
+│   ├── jpeg-conformance/            # JPEG — 277 files (MIT/IJG+BSD/Various)
+│   │   ├── valid/, invalid/, non-conformant/, crash-repro/
+│   ├── pngsuite/                    # PNG — 176 files (Freeware)
+│   ├── png-conformance/             # PNG edge cases — 11 files
+│   ├── apng-conformance/            # APNG — 31 files (CC0, generated)
+│   │   ├── valid/, invalid/, edge/, generate.py, README.md
+│   ├── gif-conformance/             # GIF — 39 files (CC0, generated)
+│   │   ├── valid/, invalid/, edge-cases/, generate.py, README.md
+│   ├── webp-conformance/            # WebP — 230 files (Various)
+│   │   ├── valid/
+│   ├── tiff-conformance/            # TIFF — 154 files (MIT/CC0/libtiff/Various)
+│   │   ├── valid/, edge-cases/, robustness/
+│   ├── bmp-conformance/             # BMP — 126 files (Various)
+│   │   ├── valid/, invalid/, non-conformant/
+│   ├── pnm-conformance/             # PNM/PAM — 51 files (CC0, generated)
+│   │   ├── valid/{pbm,pgm,ppm,pam}/, invalid/, edge-cases/
+│   │   ├── generate.py, README.md
+│   └── farbfeld-conformance/        # Farbfeld — 24 files (CC0, generated)
+│       ├── valid/, invalid/, edge-cases/, generate.py, README.md
+│
+├── Multi-format Test Suites
+│   ├── image-rs/                    # image-rs tests — 127 files (MIT)
+│   ├── zune/                        # zune-image fuzz corpus — 3,434 files (MIT/Apache/Zlib)
+│   ├── mozjpeg/                     # mozjpeg references — 16 files (IJG + BSD)
+│   └── imageflow/                   # imageflow tests — 51 files (Various)
+│
+└── crate/                           # codec-corpus Rust crate source
 ```
 
 ---
@@ -458,13 +638,23 @@ Every dataset includes its own license file in its directory.
 | QOI `screenshot_game` | CC BY-SA 3.0 | Yes | **Yes** | **Yes** |
 | QOI `pngimg` | CC BY-NC 4.0 | **No** | **Yes** | No |
 | KADID-10k | Pixabay License | Yes | No | No |
+| AVIF Conformance | BSD-2/CC-BY-SA/CC-BY-NC-ND | Varies | Varies | Varies |
+| HEIC Conformance | ⚠️ Mixed/Unlicensed | Varies | Varies | — |
 | JXL | BSD-3-Clause | Yes | No | No |
 | PNGSuite | Freeware | Yes | No | No |
+| APNG Conformance | CC0 1.0 | Yes | No | No |
+| GIF Conformance | CC0 1.0 | Yes | No | No |
 | TIFF Conformance | MIT/CC0/libtiff/Various | Yes | Varies | No |
+| WebP Conformance | Various | Yes | Varies | No |
+| BMP Conformance | Various | Yes | Varies | No |
+| PNM Conformance | CC0 1.0 | Yes | No | No |
+| Farbfeld Conformance | CC0 1.0 | Yes | No | No |
+| UltraHDR Conformance | MIT/Apache-2.0/CC-BY-4.0 | Yes | Varies | No |
+| RAW/DNG Conformance | CC0 1.0 | Yes | No | No |
+| JPEG Conformance | MIT/IJG+BSD/Various | Yes | Varies | No |
 | image-rs | MIT | Yes | No | No |
 | zune-image | MIT/Apache-2.0/Zlib | Yes | No | No |
 | mozjpeg | IJG + BSD | Yes | No | No |
-| JPEG Conformance | MIT/IJG+BSD/Various | Yes | Varies | No |
 | imageflow | Various | Yes | Varies | No |
 
 ---
