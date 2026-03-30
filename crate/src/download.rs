@@ -104,9 +104,7 @@ pub(crate) fn try_http_download(root: &Path, folder: &str, version: &str) -> Res
     );
 
     let tmp_tar = temp_tar_path(root);
-    let downloaded = try_curl(&url, &tmp_tar)
-        .or_else(|_| try_wget(&url, &tmp_tar))
-        .or_else(|_| try_powershell(&url, &tmp_tar));
+    let downloaded = download_file(&url, &tmp_tar);
 
     if downloaded.is_err() {
         let _ = std::fs::remove_file(&tmp_tar);
@@ -147,6 +145,18 @@ pub(crate) fn try_http_download(root: &Path, folder: &str, version: &str) -> Res
 
     let _ = std::fs::remove_dir_all(&tmp_extract);
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Generic file download (curl → wget → powershell fallback)
+// ---------------------------------------------------------------------------
+
+/// Download a file from `url` to `dest` using whatever HTTP client is
+/// available on the system (curl, wget, or PowerShell).
+pub(crate) fn download_file(url: &str, dest: &Path) -> Result<(), Error> {
+    try_curl(url, dest)
+        .or_else(|_| try_wget(url, dest))
+        .or_else(|_| try_powershell(url, dest))
 }
 
 // ---------------------------------------------------------------------------
