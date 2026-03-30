@@ -2,9 +2,9 @@
 
 [package]
 name = "codec-corpus"
-version = "1.0.3"
+version = "1.1.0"
 edition = "2024"
-description = "Runtime API for downloading, caching, and accessing test image datasets from imazen/codec-corpus"
+description = "Runtime API for downloading, caching, and accessing test image datasets from imazen/codec-corpus and third-party sources"
 license = "Apache-2.0"
 repository = "https://github.com/imazen/codec-corpus"
 readme = "README.md"

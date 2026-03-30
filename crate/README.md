@@ -1,6 +1,6 @@
 # codec-corpus
 
-Runtime access to the [imazen/codec-corpus](https://github.com/imazen/codec-corpus) test image collection. No data ships with the crate — datasets download on first use and cache locally.
+Runtime access to the [imazen/codec-corpus](https://github.com/imazen/codec-corpus) test image collection and third-party fuzz/conformance corpora. No data ships with the crate — datasets download on first use and cache locally.
 
 ```rust
 let corpus = codec_corpus::Corpus::new()?;
@@ -28,6 +28,10 @@ codec-corpus = "1"
 
 ## Usage
 
+### imazen/codec-corpus (default)
+
+Any path without a recognized third-party prefix downloads from `imazen/codec-corpus`:
+
 ```rust
 use codec_corpus::Corpus;
 
@@ -45,6 +49,52 @@ fn jpeg_conformance() {
 }
 ```
 
+### Third-party sources (built-in registry)
+
+Prefixed paths resolve to known external sources automatically:
+
+```rust
+let corpus = codec_corpus::Corpus::new().unwrap();
+
+// OSS-Fuzz backup corpora (downloaded as ZIP from GCS)
+let ossfuzz_jpeg = corpus.get("oss-fuzz/libjpeg-turbo").unwrap();
+let ossfuzz_png = corpus.get("oss-fuzz/libpng").unwrap();
+let ossfuzz_jxl = corpus.get("oss-fuzz/libjxl").unwrap();
+
+// dvyukov/go-fuzz-corpus subfolders (git sparse checkout)
+let gofuzz_gif = corpus.get("go-fuzz-corpus/gif").unwrap();
+let gofuzz_png = corpus.get("go-fuzz-corpus/png").unwrap();
+let gofuzz_jpeg = corpus.get("go-fuzz-corpus/jpeg").unwrap();
+
+// libjpeg-turbo fuzz seed corpus (git sparse checkout)
+let ljt_fuzz = corpus.get("libjpeg-turbo-fuzz").unwrap();
+
+// image-rs/image test images (git sparse checkout)
+let imagers = corpus.get("image-rs/tests/images").unwrap();
+```
+
+Third-party sources are cached under `third-party/` in the cache root and re-fetched if the `.fetched` marker is older than 7 days (configurable via `with_max_age()`).
+
+### Ad-hoc sources
+
+Fetch from arbitrary locations without needing them in the built-in registry:
+
+```rust
+let corpus = codec_corpus::Corpus::new().unwrap();
+
+// Arbitrary GitHub repo subfolder
+let path = corpus.github_repo("niclas-aspect/jxl-rs", "test-data", "main").unwrap();
+
+// Download and cache a ZIP URL
+let path = corpus.zip_url("custom-corpus", "https://example.com/corpus.zip").unwrap();
+
+// Download and cache a tarball URL
+let path = corpus.tar_url("my-corpus", "https://example.com/corpus.tar.gz").unwrap();
+
+// Point at a local directory (validates existence, no download)
+let path = corpus.local_path("/home/user/my-images").unwrap();
+```
+
 ### Custom cache location
 
 ```rust
@@ -55,6 +105,16 @@ Or via environment variable:
 
 ```bash
 CODEC_CORPUS_CACHE=/mnt/fast-storage cargo test -- --ignored
+```
+
+### Cache staleness
+
+Third-party sources use a `.fetched` timestamp marker. By default, sources older than 7 days are re-fetched:
+
+```rust
+use std::time::Duration;
+let corpus = codec_corpus::Corpus::new()?
+    .with_max_age(Duration::from_secs(30 * 24 * 3600)); // 30 days
 ```
 
 ### Check what's cached
@@ -69,7 +129,20 @@ for name in corpus.list_cached() {
 }
 ```
 
-## Datasets
+## Built-in third-party registry
+
+| Prefix | Source | Download method |
+|--------|--------|-----------------|
+| `oss-fuzz/libjpeg-turbo` | OSS-Fuzz backup corpus (cjpeg_fuzzer) | ZIP from GCS |
+| `oss-fuzz/libpng` | OSS-Fuzz backup corpus (read_fuzzer) | ZIP from GCS |
+| `oss-fuzz/libjxl` | OSS-Fuzz backup corpus (djxl_fuzzer) | ZIP from GCS |
+| `go-fuzz-corpus/gif` | dvyukov/go-fuzz-corpus gif/corpus | git sparse checkout |
+| `go-fuzz-corpus/png` | dvyukov/go-fuzz-corpus png/corpus | git sparse checkout |
+| `go-fuzz-corpus/jpeg` | dvyukov/go-fuzz-corpus jpeg/corpus | git sparse checkout |
+| `libjpeg-turbo-fuzz` | libjpeg-turbo/fuzz seed_corpus | git sparse checkout |
+| `image-rs/{subpath}` | image-rs/image {subpath} | git sparse checkout |
+
+## Datasets (imazen/codec-corpus)
 
 Any top-level folder in the [codec-corpus repo](https://github.com/imazen/codec-corpus) is a valid path. Pass any path into `get()` — the first component determines the download unit.
 
@@ -78,9 +151,9 @@ Any top-level folder in the [codec-corpus repo](https://github.com/imazen/codec-
 | Dataset | Download | Files | Description | License |
 |---------|----------|-------|-------------|---------|
 | `clic2025` | 218 MB | 64 | High-res photos for codec evaluation (~2048px) | Unsplash |
-| `CID22` | 86 MB | 251 | Diverse 512×512 images (209 training + 41 validation) | CC BY-SA 4.0 |
-| `kadid10k` | 25 MB | 82 | Pristine IQA reference images, 512×384 | Pixabay |
-| `gb82` | 9.6 MB | 26 | Challenging CC0 photos, 576×576 | CC0 |
+| `CID22` | 86 MB | 251 | Diverse 512x512 images (209 training + 41 validation) | CC BY-SA 4.0 |
+| `kadid10k` | 25 MB | 82 | Pristine IQA reference images, 512x384 | Pixabay |
+| `gb82` | 9.6 MB | 26 | Challenging CC0 photos, 576x576 | CC0 |
 | `gb82-sc` | 3.0 MB | 11 | Screenshots and screen content | CC0 |
 | `qoi-benchmark` | 39 MB | 18 | Full-page web screenshots | CC0 |
 
@@ -113,14 +186,20 @@ Full dataset descriptions and per-file attribution: [codec-corpus README](https:
 ~/Library/Caches/codec-corpus/v1/  # macOS
 %LOCALAPPDATA%\codec-corpus\v1\    # Windows
 
-  .version          # "1.0.0" — triggers re-download on version change
+  .version          # "1.0.3" — triggers re-download on version change
   .lock             # fd-lock for concurrent access
   pngsuite/
   jpeg-conformance/
-  ...
+  third-party/                     # Third-party sources (not version-gated)
+    oss-fuzz__libpng/
+      .fetched      # Unix timestamp — re-fetch if >7 days old
+      ...files...
+    go-fuzz-corpus__gif/
+    github__owner__repo__path/
+    ...
 ```
 
-Different major versions coexist (`v1/`, `v2/`). Any crate version change within a major version triggers a re-download to ensure correctness.
+Different major versions coexist (`v1/`, `v2/`). imazen/codec-corpus datasets re-download on any crate version change. Third-party sources use time-based staleness (default 7 days) and survive version changes.
 
 ## CI integration
 
@@ -141,7 +220,7 @@ Two Rust crates, both small:
 - `dirs` — cross-platform cache directory
 - `fd-lock` — file locking for concurrent safety
 
-Archive extraction uses the system `tar` command. No `reqwest`, `ureq`, `gix`, `serde`, or `toml`.
+Archive extraction uses system commands (`tar`, `unzip`, `powershell`). No `reqwest`, `ureq`, `gix`, `serde`, or `toml`.
 
 ## License
 
