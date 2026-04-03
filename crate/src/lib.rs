@@ -454,12 +454,20 @@ impl Corpus {
     }
 
     /// Run `f` while holding the file lock.
+    /// On wasm32 there is no concurrent-process risk, so the lock is skipped.
     fn with_lock(&self, f: impl FnOnce() -> Result<(), Error>) -> Result<(), Error> {
-        let lock_path = self.root.join(".lock");
-        let lock_file = std::fs::File::create(&lock_path).map_err(Error::Io)?;
-        let mut lock = fd_lock::RwLock::new(lock_file);
-        let _guard = lock.write().map_err(Error::Io)?;
-        f()
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let lock_path = self.root.join(".lock");
+            let lock_file = std::fs::File::create(&lock_path).map_err(Error::Io)?;
+            let mut lock = fd_lock::RwLock::new(lock_file);
+            let _guard = lock.write().map_err(Error::Io)?;
+            f()
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            f()
+        }
     }
 
     /// Download the top-level folder from imazen/codec-corpus.
@@ -627,9 +635,13 @@ impl Corpus {
 
     /// Download the top-level folder that contains `folder`.
     fn ensure_downloaded(&self, folder: &str) -> Result<(), Error> {
+        #[cfg(not(target_arch = "wasm32"))]
         let lock_path = self.root.join(".lock");
+        #[cfg(not(target_arch = "wasm32"))]
         let lock_file = std::fs::File::create(&lock_path).map_err(Error::Io)?;
+        #[cfg(not(target_arch = "wasm32"))]
         let mut lock = fd_lock::RwLock::new(lock_file);
+        #[cfg(not(target_arch = "wasm32"))]
         let _guard = lock.write().map_err(Error::Io)?;
 
         // Re-check after acquiring lock — another process may have finished
