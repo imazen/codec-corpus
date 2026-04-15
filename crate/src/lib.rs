@@ -64,6 +64,7 @@ use std::time::Duration;
 // Embedded metadata
 // ---------------------------------------------------------------------------
 
+#[cfg(not(target_arch = "wasm32"))]
 const REPO_URL: &str = "https://github.com/imazen/codec-corpus";
 const CRATE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -90,6 +91,13 @@ pub enum Error {
     DownloadFailed { url: String, reason: String },
     /// Local path does not exist.
     LocalPathNotFound { path: String },
+    /// Downloads are not supported on this platform (e.g. wasm32).
+    ///
+    /// Returned by [`Corpus::get()`] when the dataset is not cached and the
+    /// runtime cannot spawn subprocesses to fetch it. Pre-populate the cache
+    /// on the host and point [`Corpus::with_cache_root()`] at the preopened
+    /// path instead.
+    DownloadUnsupported { dataset: String },
 }
 
 impl std::fmt::Display for Error {
@@ -108,6 +116,13 @@ impl std::fmt::Display for Error {
             }
             Error::LocalPathNotFound { path } => {
                 write!(f, "local path does not exist: '{path}'")
+            }
+            Error::DownloadUnsupported { dataset } => {
+                write!(
+                    f,
+                    "downloads are not supported on this platform; \
+                     dataset '{dataset}' must be pre-cached on the host"
+                )
             }
         }
     }
@@ -634,14 +649,23 @@ impl Corpus {
     }
 
     /// Download the top-level folder that contains `folder`.
+    ///
+    /// On wasm32, subprocess-based downloads are not available. Returns
+    /// [`Error::DownloadUnsupported`] immediately — callers should
+    /// pre-populate the cache on the host instead.
+    #[cfg(target_arch = "wasm32")]
     fn ensure_downloaded(&self, folder: &str) -> Result<(), Error> {
-        #[cfg(not(target_arch = "wasm32"))]
+        Err(Error::DownloadUnsupported {
+            dataset: folder.to_string(),
+        })
+    }
+
+    /// Download the top-level folder that contains `folder`.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn ensure_downloaded(&self, folder: &str) -> Result<(), Error> {
         let lock_path = self.root.join(".lock");
-        #[cfg(not(target_arch = "wasm32"))]
         let lock_file = std::fs::File::create(&lock_path).map_err(Error::Io)?;
-        #[cfg(not(target_arch = "wasm32"))]
         let mut lock = fd_lock::RwLock::new(lock_file);
-        #[cfg(not(target_arch = "wasm32"))]
         let _guard = lock.write().map_err(Error::Io)?;
 
         // Re-check after acquiring lock — another process may have finished
@@ -670,6 +694,7 @@ impl Corpus {
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn clear_datasets(&self) {
         if let Ok(entries) = std::fs::read_dir(&self.root) {
             for entry in entries.flatten() {
@@ -704,6 +729,8 @@ fn top_level_folder(path: &str) -> &str {
 }
 
 /// Atomically write the version file (write to temp, then rename).
+// Used in wasm tests but not in the library on wasm32.
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 fn write_version_file(root: &std::path::Path, version: &str) -> Result<(), Error> {
     let version_file = root.join(".version");
     let tmp = root.join(".version.tmp");
@@ -737,6 +764,7 @@ fn sanitize_cache_key(key: &str) -> String {
 }
 
 /// Remove `.tmp-*` entries older than 1 hour (orphaned from crashed runs).
+#[cfg(not(target_arch = "wasm32"))]
 fn cleanup_old_temps(root: &Path) {
     let one_hour = Duration::from_secs(3600);
     let Ok(entries) = std::fs::read_dir(root) else {
@@ -772,6 +800,8 @@ fn cleanup_old_temps(root: &Path) {
 mod tests {
     use super::*;
 
+    // Pure-logic tests that work on all platforms including wasm32.
+
     #[test]
     fn test_top_level_folder() {
         assert_eq!(top_level_folder("webp-conformance"), "webp-conformance");
@@ -783,89 +813,6 @@ mod tests {
     }
 
     #[test]
-    fn test_list_cached_empty() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-list-cached");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
-        assert!(corpus.list_cached().is_empty());
-        let _ = std::fs::remove_dir_all(tmp);
-    }
-
-    #[test]
-    fn test_list_cached_with_dirs() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-list-cached2");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
-        // Create fake dataset dirs
-        std::fs::create_dir_all(corpus.root.join("alpha")).unwrap();
-        std::fs::create_dir_all(corpus.root.join("beta")).unwrap();
-        // Hidden dirs should be excluded
-        std::fs::create_dir_all(corpus.root.join(".tmp-123")).unwrap();
-        let cached = corpus.list_cached();
-        assert_eq!(cached, vec!["alpha", "beta"]);
-        let _ = std::fs::remove_dir_all(tmp);
-    }
-
-    #[test]
-    fn test_list_cached_includes_third_party() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-list-tp");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
-        // Create fake dataset dirs
-        std::fs::create_dir_all(corpus.root.join("alpha")).unwrap();
-        std::fs::create_dir_all(corpus.root.join("third-party").join("oss-fuzz__libpng")).unwrap();
-        std::fs::create_dir_all(corpus.root.join("third-party").join("go-fuzz-corpus__gif"))
-            .unwrap();
-        let cached = corpus.list_cached();
-        assert_eq!(
-            cached,
-            vec![
-                "alpha",
-                "third-party/go-fuzz-corpus__gif",
-                "third-party/oss-fuzz__libpng",
-            ]
-        );
-        let _ = std::fs::remove_dir_all(tmp);
-    }
-
-    #[test]
-    fn test_unknown_dataset_downloads() {
-        // With no hardcoded list, any name is accepted (will fail at download)
-        let tmp = std::env::temp_dir().join("codec-corpus-test-any-name");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
-        let result = corpus.get("nonexistent-dataset");
-        // Should fail with NetworkUnavailable, not UnknownDataset
-        assert!(matches!(result, Err(Error::NetworkUnavailable { .. })));
-        let _ = std::fs::remove_dir_all(tmp);
-    }
-
-    #[test]
-    fn test_is_cached_empty() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-cached");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
-        assert!(!corpus.is_cached("webp-conformance"));
-        let _ = std::fs::remove_dir_all(tmp);
-    }
-
-    #[test]
-    fn test_version_matches() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-version");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
-        assert!(!corpus.version_matches());
-
-        write_version_file(&corpus.root, CRATE_VERSION).unwrap();
-        assert!(corpus.version_matches());
-
-        write_version_file(&corpus.root, "0.0.0-fake").unwrap();
-        assert!(!corpus.version_matches());
-
-        let _ = std::fs::remove_dir_all(tmp);
-    }
-
-    #[test]
     fn test_sanitize_cache_key() {
         assert_eq!(sanitize_cache_key("simple-key"), "simple-key");
         assert_eq!(sanitize_cache_key("a/b/c"), "a_b_c");
@@ -873,145 +820,295 @@ mod tests {
         assert_eq!(sanitize_cache_key("foo.bar_baz-1"), "foo.bar_baz-1");
     }
 
-    #[test]
-    fn test_fetched_marker_staleness() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-staleness");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp)
-            .unwrap()
-            .with_max_age(Duration::from_secs(3600));
-        let dir = corpus.root.join("third-party").join("test-stale");
-        std::fs::create_dir_all(&dir).unwrap();
+    // Tests that use std::env::temp_dir() — not available on wasm32.
+    #[cfg(not(target_arch = "wasm32"))]
+    mod native {
+        use super::*;
 
-        // No marker = stale
-        assert!(corpus.is_stale(&dir));
+        #[test]
+        fn test_list_cached_empty() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-list-cached");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+            assert!(corpus.list_cached().is_empty());
+            let _ = std::fs::remove_dir_all(tmp);
+        }
 
-        // Fresh marker = not stale
-        write_fetched_marker(&dir).unwrap();
-        assert!(!corpus.is_stale(&dir));
+        #[test]
+        fn test_list_cached_with_dirs() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-list-cached2");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+            // Create fake dataset dirs
+            std::fs::create_dir_all(corpus.root.join("alpha")).unwrap();
+            std::fs::create_dir_all(corpus.root.join("beta")).unwrap();
+            // Hidden dirs should be excluded
+            std::fs::create_dir_all(corpus.root.join(".tmp-123")).unwrap();
+            let cached = corpus.list_cached();
+            assert_eq!(cached, vec!["alpha", "beta"]);
+            let _ = std::fs::remove_dir_all(tmp);
+        }
 
-        // Old marker = stale
-        let old_ts = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            - 7200; // 2 hours ago
-        std::fs::write(dir.join(".fetched"), old_ts.to_string()).unwrap();
-        assert!(corpus.is_stale(&dir));
+        #[test]
+        fn test_list_cached_includes_third_party() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-list-tp");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+            // Create fake dataset dirs
+            std::fs::create_dir_all(corpus.root.join("alpha")).unwrap();
+            std::fs::create_dir_all(corpus.root.join("third-party").join("oss-fuzz__libpng"))
+                .unwrap();
+            std::fs::create_dir_all(corpus.root.join("third-party").join("go-fuzz-corpus__gif"))
+                .unwrap();
+            let cached = corpus.list_cached();
+            assert_eq!(
+                cached,
+                vec![
+                    "alpha",
+                    "third-party/go-fuzz-corpus__gif",
+                    "third-party/oss-fuzz__libpng",
+                ]
+            );
+            let _ = std::fs::remove_dir_all(tmp);
+        }
 
-        let _ = std::fs::remove_dir_all(tmp);
+        #[test]
+        fn test_unknown_dataset_downloads() {
+            // With no hardcoded list, any name is accepted (will fail at download)
+            let tmp = std::env::temp_dir().join("codec-corpus-test-any-name");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+            let result = corpus.get("nonexistent-dataset");
+            // Should fail with NetworkUnavailable, not UnknownDataset
+            assert!(matches!(result, Err(Error::NetworkUnavailable { .. })));
+            let _ = std::fs::remove_dir_all(tmp);
+        }
+
+        #[test]
+        fn test_is_cached_empty() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-cached");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+            assert!(!corpus.is_cached("webp-conformance"));
+            let _ = std::fs::remove_dir_all(tmp);
+        }
+
+        #[test]
+        fn test_version_matches() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-version");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+            assert!(!corpus.version_matches());
+
+            write_version_file(&corpus.root, CRATE_VERSION).unwrap();
+            assert!(corpus.version_matches());
+
+            write_version_file(&corpus.root, "0.0.0-fake").unwrap();
+            assert!(!corpus.version_matches());
+
+            let _ = std::fs::remove_dir_all(tmp);
+        }
+
+        #[test]
+        fn test_fetched_marker_staleness() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-staleness");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp)
+                .unwrap()
+                .with_max_age(Duration::from_secs(3600));
+            let dir = corpus.root.join("third-party").join("test-stale");
+            std::fs::create_dir_all(&dir).unwrap();
+
+            // No marker = stale
+            assert!(corpus.is_stale(&dir));
+
+            // Fresh marker = not stale
+            write_fetched_marker(&dir).unwrap();
+            assert!(!corpus.is_stale(&dir));
+
+            // Old marker = stale
+            let old_ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                - 7200; // 2 hours ago
+            std::fs::write(dir.join(".fetched"), old_ts.to_string()).unwrap();
+            assert!(corpus.is_stale(&dir));
+
+            let _ = std::fs::remove_dir_all(tmp);
+        }
+
+        #[test]
+        fn test_local_path_exists() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-local");
+            let _ = std::fs::remove_dir_all(&tmp);
+            std::fs::create_dir_all(&tmp).unwrap();
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+
+            let result = corpus.local_path(&tmp);
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap(), tmp);
+
+            let _ = std::fs::remove_dir_all(&tmp);
+        }
+
+        #[test]
+        fn test_local_path_not_found() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-local-nf");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+
+            let result = corpus.local_path("/nonexistent/path/here");
+            assert!(matches!(result, Err(Error::LocalPathNotFound { .. })));
+
+            let _ = std::fs::remove_dir_all(tmp);
+        }
+
+        #[test]
+        fn test_is_cached_third_party() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-tp-cached");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+
+            // Not cached initially
+            assert!(!corpus.is_cached("oss-fuzz/libpng"));
+
+            // Create fake third-party cache with fresh marker
+            let tp_dir = corpus.third_party_dir("oss-fuzz__libpng");
+            std::fs::create_dir_all(&tp_dir).unwrap();
+            write_fetched_marker(&tp_dir).unwrap();
+
+            assert!(corpus.is_cached("oss-fuzz/libpng"));
+
+            let _ = std::fs::remove_dir_all(tmp);
+        }
+
+        #[test]
+        fn test_clear_datasets_preserves_third_party() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-clear-tp");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+
+            // Create imazen dataset and third-party dataset
+            std::fs::create_dir_all(corpus.root.join("pngsuite")).unwrap();
+            let tp_dir = corpus.root.join("third-party").join("some-source");
+            std::fs::create_dir_all(&tp_dir).unwrap();
+            std::fs::write(tp_dir.join("data.bin"), b"hello").unwrap();
+
+            corpus.clear_datasets();
+
+            // imazen dataset should be gone
+            assert!(!corpus.root.join("pngsuite").exists());
+            // third-party should survive
+            assert!(tp_dir.exists());
+            assert!(tp_dir.join("data.bin").exists());
+
+            let _ = std::fs::remove_dir_all(tmp);
+        }
+
+        #[test]
+        fn test_third_party_subpath() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-tp-sub");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+
+            let src = registry::ResolvedSource {
+                cache_key: "oss-fuzz__libpng".to_string(),
+                kind: registry::SourceKind::Zip { url: String::new() },
+            };
+
+            assert_eq!(corpus.third_party_subpath("oss-fuzz/libpng", &src), None);
+            assert_eq!(
+                corpus.third_party_subpath("oss-fuzz/libpng/some-file", &src),
+                Some("some-file".to_string())
+            );
+
+            let src2 = registry::ResolvedSource {
+                cache_key: "go-fuzz-corpus__gif".to_string(),
+                kind: registry::SourceKind::Zip { url: String::new() },
+            };
+
+            assert_eq!(
+                corpus.third_party_subpath("go-fuzz-corpus/gif", &src2),
+                None
+            );
+            assert_eq!(
+                corpus.third_party_subpath("go-fuzz-corpus/gif/sub/file.gif", &src2),
+                Some("sub/file.gif".to_string())
+            );
+
+            let _ = std::fs::remove_dir_all(tmp);
+        }
+
+        #[test]
+        fn test_with_max_age() {
+            let tmp = std::env::temp_dir().join("codec-corpus-test-max-age");
+            let _ = std::fs::remove_dir_all(&tmp);
+            let corpus = Corpus::with_cache_root(&tmp)
+                .unwrap()
+                .with_max_age(Duration::from_secs(60));
+            assert_eq!(corpus.max_age, Duration::from_secs(60));
+            let _ = std::fs::remove_dir_all(tmp);
+        }
     }
 
-    #[test]
-    fn test_local_path_exists() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-local");
-        let _ = std::fs::remove_dir_all(&tmp);
-        std::fs::create_dir_all(&tmp).unwrap();
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
+    // Wasm32-specific test: exercises the read-only cache path using a
+    // pre-populated directory under the preopened cwd.
+    #[cfg(target_arch = "wasm32")]
+    mod wasm {
+        use super::*;
 
-        let result = corpus.local_path(&tmp);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), tmp);
+        #[test]
+        fn test_read_only_cache() {
+            let cwd = std::env::current_dir().expect("cwd must be preopened via --dir");
+            let tmp = cwd.join(".corpus-test-tmp");
 
-        let _ = std::fs::remove_dir_all(&tmp);
-    }
+            // Clean up any leftover from a prior run.
+            let _ = std::fs::remove_dir_all(&tmp);
 
-    #[test]
-    fn test_local_path_not_found() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-local-nf");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
+            // Build a fake cache layout that Corpus::with_cache_root expects:
+            //   {tmp}/codec-corpus/v1/fake-dataset/
+            //   {tmp}/codec-corpus/v1/.version  (matching crate version)
+            let corpus = Corpus::with_cache_root(&tmp).unwrap();
+            let dataset_dir = corpus.root.join("fake-dataset");
+            std::fs::create_dir_all(&dataset_dir).unwrap();
+            std::fs::write(dataset_dir.join("sample.bin"), b"hello wasm").unwrap();
+            write_version_file(&corpus.root, CRATE_VERSION).unwrap();
 
-        let result = corpus.local_path("/nonexistent/path/here");
-        assert!(matches!(result, Err(Error::LocalPathNotFound { .. })));
+            // Verify is_cached returns true for the fake dataset.
+            assert!(
+                corpus.is_cached("fake-dataset"),
+                "expected fake-dataset to be cached"
+            );
 
-        let _ = std::fs::remove_dir_all(tmp);
-    }
+            // Verify list_cached includes it.
+            let cached = corpus.list_cached();
+            assert!(
+                cached.contains(&"fake-dataset".to_string()),
+                "expected list_cached to contain fake-dataset, got: {cached:?}"
+            );
 
-    #[test]
-    fn test_is_cached_third_party() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-tp-cached");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
+            // Verify get() returns the cached path without hitting the network.
+            let path = corpus
+                .get("fake-dataset")
+                .expect("get() should succeed for a cached dataset on wasm");
+            assert!(path.is_dir(), "expected returned path to be a directory");
+            assert!(
+                path.join("sample.bin").exists(),
+                "expected sample.bin in the returned directory"
+            );
 
-        // Not cached initially
-        assert!(!corpus.is_cached("oss-fuzz/libpng"));
+            // Verify get() for an uncached dataset returns DownloadUnsupported.
+            let err = corpus
+                .get("uncached-dataset")
+                .expect_err("get() for uncached dataset should fail on wasm");
+            assert!(
+                matches!(err, Error::DownloadUnsupported { .. }),
+                "expected DownloadUnsupported, got: {err}"
+            );
 
-        // Create fake third-party cache with fresh marker
-        let tp_dir = corpus.third_party_dir("oss-fuzz__libpng");
-        std::fs::create_dir_all(&tp_dir).unwrap();
-        write_fetched_marker(&tp_dir).unwrap();
-
-        assert!(corpus.is_cached("oss-fuzz/libpng"));
-
-        let _ = std::fs::remove_dir_all(tmp);
-    }
-
-    #[test]
-    fn test_clear_datasets_preserves_third_party() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-clear-tp");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
-
-        // Create imazen dataset and third-party dataset
-        std::fs::create_dir_all(corpus.root.join("pngsuite")).unwrap();
-        let tp_dir = corpus.root.join("third-party").join("some-source");
-        std::fs::create_dir_all(&tp_dir).unwrap();
-        std::fs::write(tp_dir.join("data.bin"), b"hello").unwrap();
-
-        corpus.clear_datasets();
-
-        // imazen dataset should be gone
-        assert!(!corpus.root.join("pngsuite").exists());
-        // third-party should survive
-        assert!(tp_dir.exists());
-        assert!(tp_dir.join("data.bin").exists());
-
-        let _ = std::fs::remove_dir_all(tmp);
-    }
-
-    #[test]
-    fn test_third_party_subpath() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-tp-sub");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp).unwrap();
-
-        let src = registry::ResolvedSource {
-            cache_key: "oss-fuzz__libpng".to_string(),
-            kind: registry::SourceKind::Zip { url: String::new() },
-        };
-
-        assert_eq!(corpus.third_party_subpath("oss-fuzz/libpng", &src), None);
-        assert_eq!(
-            corpus.third_party_subpath("oss-fuzz/libpng/some-file", &src),
-            Some("some-file".to_string())
-        );
-
-        let src2 = registry::ResolvedSource {
-            cache_key: "go-fuzz-corpus__gif".to_string(),
-            kind: registry::SourceKind::Zip { url: String::new() },
-        };
-
-        assert_eq!(
-            corpus.third_party_subpath("go-fuzz-corpus/gif", &src2),
-            None
-        );
-        assert_eq!(
-            corpus.third_party_subpath("go-fuzz-corpus/gif/sub/file.gif", &src2),
-            Some("sub/file.gif".to_string())
-        );
-
-        let _ = std::fs::remove_dir_all(tmp);
-    }
-
-    #[test]
-    fn test_with_max_age() {
-        let tmp = std::env::temp_dir().join("codec-corpus-test-max-age");
-        let _ = std::fs::remove_dir_all(&tmp);
-        let corpus = Corpus::with_cache_root(&tmp)
-            .unwrap()
-            .with_max_age(Duration::from_secs(60));
-        assert_eq!(corpus.max_age, Duration::from_secs(60));
-        let _ = std::fs::remove_dir_all(tmp);
+            // Clean up.
+            let _ = std::fs::remove_dir_all(&tmp);
+        }
     }
 }

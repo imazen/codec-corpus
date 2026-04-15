@@ -10,6 +10,7 @@ use crate::Error;
 ///
 /// Tries the versioned tag (`v{version}`) first; falls back to the default
 /// branch so the crate works before a release is tagged.
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn try_git_sparse_checkout(
     root: &Path,
     folder: &str,
@@ -98,6 +99,7 @@ fn try_git_clone(repo_url: &str, dest: &Path, branch: Option<&str>) -> Result<()
 ///
 /// `folder` is the top-level directory name. The tarball is always named
 /// `{folder}.tar.gz` in the release assets.
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn try_http_download(root: &Path, folder: &str, version: &str) -> Result<(), Error> {
     let url = format!(
         "https://github.com/imazen/codec-corpus/releases/download/v{version}/{folder}.tar.gz"
@@ -153,6 +155,7 @@ pub(crate) fn try_http_download(root: &Path, folder: &str, version: &str) -> Res
 
 /// Download a file from `url` to `dest` using whatever HTTP client is
 /// available on the system (curl, wget, or PowerShell).
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn download_file(url: &str, dest: &Path) -> Result<(), Error> {
     try_curl(url, dest)
         .or_else(|_| try_wget(url, dest))

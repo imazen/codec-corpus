@@ -17,3 +17,6 @@ qoi-benchmark/textures_*/
 qoi-benchmark/photo_*/
 qoi-benchmark/pngimg/
 qoi-benchmark/.tmp_download/
+
+# wasm test temp directory (created by tests::wasm::test_read_only_cache)
+crate/.corpus-test-tmp/
