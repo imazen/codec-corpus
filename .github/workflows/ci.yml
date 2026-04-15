@@ -71,6 +71,52 @@ jobs:
       - run: cargo test
         working-directory: crate
 
+  wasm:
+    name: Test (wasm32-wasip1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crate
+          key: wasm32
+
+      - name: Install wasmtime
+        run: |
+          curl https://wasmtime.dev/install.sh -sSf | bash
+          echo "$HOME/.wasmtime/bin" >> $GITHUB_PATH
+
+      - name: Check (scalar)
+        run: cargo check --target wasm32-wasip1
+        working-directory: crate
+
+      - name: Check (SIMD128)
+        env:
+          RUSTFLAGS: "-C target-feature=+simd128"
+        run: cargo check --target wasm32-wasip1
+        working-directory: crate
+
+      - name: Clippy (wasm32)
+        run: cargo clippy --target wasm32-wasip1 -- -D warnings
+        working-directory: crate
+
+      - name: Test (SIMD128)
+        env:
+          RUSTFLAGS: "-C target-feature=+simd128"
+          CARGO_TARGET_WASM32_WASIP1_RUNNER: "wasmtime --dir ."
+        run: cargo test --lib --target wasm32-wasip1
+        working-directory: crate
+
+      - name: Test (scalar)
+        env:
+          CARGO_TARGET_WASM32_WASIP1_RUNNER: "wasmtime --dir ."
+        run: cargo test --lib --target wasm32-wasip1
+        working-directory: crate
+
   test-integration:
     name: Integration tests (${{ matrix.name }})
     runs-on: ${{ matrix.runner }}
