@@ -257,12 +257,13 @@ Calling `get()` for an uncached dataset on WASM returns `Error::DownloadUnsuppor
 
 ## Dependencies
 
-Two Rust crates, both small:
+Four Rust crates, all small:
 
 - `dirs` — cross-platform cache directory
-- `fd-lock` — file locking for concurrent safety
+- `fd-lock` — file locking for concurrent safety (native only, not on WASM)
+- `serde` + `serde_json` — manifest parsing for R2/JSONL corpus sources
 
-Archive extraction uses system commands (`tar`, `unzip`, `powershell`). No `reqwest`, `ureq`, `gix`, `serde`, or `toml`.
+Archive extraction uses system commands (`tar`, `unzip`, `powershell`). No `reqwest`, `ureq`, `gix`, or `toml`.
 
 ## License
 
