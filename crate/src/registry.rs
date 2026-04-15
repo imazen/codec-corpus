@@ -69,16 +69,16 @@ pub(crate) fn resolve(path: &str) -> Option<ResolvedSource> {
     }
 
     // image-rs test images: image-rs/{subpath}
+    // Sparse-checks out the first path component (e.g., "tests" from
+    // "tests/images/jpg"). All requests under the same first component
+    // share one clone. Subpath navigation happens in third_party_subpath.
     if let Some(rest) = path.strip_prefix("image-rs/") {
-        // The subpath is the repo-internal path. The cache key flattens it.
-        let subpath = rest.split('/').next().unwrap_or(rest);
-        // For image-rs, the sparse checkout target is the first component
-        // of the subpath (e.g., "tests" from "tests/images").
+        let checkout_dir = rest.split('/').next().unwrap_or(rest);
         return Some(ResolvedSource {
-            cache_key: format!("image-rs__{}", rest.replace('/', "__")),
+            cache_key: format!("image-rs__{checkout_dir}"),
             kind: SourceKind::GitHubSubfolder {
                 repo: "image-rs/image",
-                repo_path: leak_string(subpath.to_string()),
+                repo_path: leak_string(checkout_dir.to_string()),
                 branch: Some("main"),
             },
         });
@@ -215,13 +215,26 @@ mod tests {
     #[test]
     fn image_rs_tests_images() {
         let src = resolve("image-rs/tests/images").unwrap();
-        assert_eq!(src.cache_key, "image-rs__tests__images");
+        // Cache key is based on the checkout unit (first component), not full path
+        assert_eq!(src.cache_key, "image-rs__tests");
         match &src.kind {
-            SourceKind::GitHubSubfolder { repo, .. } => {
+            SourceKind::GitHubSubfolder {
+                repo, repo_path, ..
+            } => {
                 assert_eq!(*repo, "image-rs/image");
+                assert_eq!(*repo_path, "tests");
             }
             other => panic!("expected GitHubSubfolder, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn image_rs_subpath_shares_cache() {
+        // Different subpaths under the same checkout dir share one cache entry
+        let a = resolve("image-rs/tests/images").unwrap();
+        let b = resolve("image-rs/tests/images/jpg/progressive").unwrap();
+        assert_eq!(a.cache_key, b.cache_key);
+        assert_eq!(a.cache_key, "image-rs__tests");
     }
 
     #[test]

@@ -627,22 +627,19 @@ impl Corpus {
         }
 
         if let Some(rest) = user_path.strip_prefix("image-rs/") {
-            // image-rs/tests/images -> cache_key is "image-rs__tests__images"
-            // image-rs/tests/images/jpeg -> subpath is "jpeg"
-            // The cache_key encodes the full repo path, so we need to figure
-            // out how many components the registry consumed.
-            // The registry consumes all of `rest` for the cache key. But user
-            // might go deeper. The cache_key is "image-rs__{rest with / -> __}".
-            // We need to find the boundary. The registry uses the first component
-            // of rest as the sparse checkout target.
-            let _first = rest.split('/').next().unwrap_or(rest);
-            // Actually, the cache_key is built from ALL components of rest.
-            // So image-rs/tests/images has cache_key image-rs__tests__images.
-            // But image-rs/tests/images/jpeg would also match the prefix
-            // "image-rs/" and get cache_key "image-rs__tests__images__jpeg".
-            // These would be different sources. So there's no subpath for
-            // image-rs — the entire path after "image-rs/" defines the source.
-            return None;
+            // Registry checks out the first component (e.g., "tests") and
+            // caches as "image-rs__tests". Everything after the first
+            // component is the subpath within the checkout.
+            // image-rs/tests         -> subpath None (root of checkout)
+            // image-rs/tests/images  -> subpath "images"
+            // image-rs/tests/images/jpg/progressive -> subpath "images/jpg/progressive"
+            let first = rest.split('/').next().unwrap_or(rest);
+            let after = &rest[first.len()..];
+            let after = after.strip_prefix('/').unwrap_or(after);
+            if after.is_empty() {
+                return None;
+            }
+            return Some(after.to_string());
         }
 
         None
@@ -1035,6 +1032,22 @@ mod tests {
             assert_eq!(
                 corpus.third_party_subpath("go-fuzz-corpus/gif/sub/file.gif", &src2),
                 Some("sub/file.gif".to_string())
+            );
+
+            // image-rs: first component is the checkout unit, rest is subpath
+            let src3 = registry::ResolvedSource {
+                cache_key: "image-rs__tests".to_string(),
+                kind: registry::SourceKind::Zip { url: String::new() },
+            };
+
+            assert_eq!(corpus.third_party_subpath("image-rs/tests", &src3), None);
+            assert_eq!(
+                corpus.third_party_subpath("image-rs/tests/images", &src3),
+                Some("images".to_string())
+            );
+            assert_eq!(
+                corpus.third_party_subpath("image-rs/tests/images/jpg/progressive", &src3),
+                Some("images/jpg/progressive".to_string())
             );
 
             let _ = std::fs::remove_dir_all(tmp);
