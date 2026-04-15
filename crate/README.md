@@ -213,6 +213,48 @@ Different major versions coexist (`v1/`, `v2/`). imazen/codec-corpus datasets re
 
 No special setup. The crate handles downloading; the CI cache avoids re-downloading across runs.
 
+## Using codec-corpus from WASM
+
+`codec-corpus` compiles for `wasm32-wasip1` (and `wasm32-unknown-unknown`). On WASM, downloads are not available since the crate relies on host subprocesses (`git`, `curl`). Instead, **prefetch on the host** and **preopen the cache** for the WASM runtime.
+
+### 1. Prefetch on the host (native)
+
+```bash
+# Download the datasets you need into a local cache directory
+CODEC_CORPUS_CACHE=$(pwd)/corpus cargo run --example prefetch -- cid22 webp-conformance
+```
+
+Or just run your native tests once — `Corpus::new()` populates `~/.cache/codec-corpus/` automatically.
+
+### 2. Run WASM tests with a preopened cache
+
+```bash
+# Map the host cache directory into the WASM sandbox
+CODEC_CORPUS_CACHE=/corpus \
+  CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime --dir $(pwd)/corpus::/corpus" \
+  cargo test --target wasm32-wasip1
+```
+
+The `--dir host_path::guest_path` flag gives the WASM process read access to the host directory at the guest mount point.
+
+### 3. In your WASM code
+
+```rust
+// Point at the preopened cache root
+let corpus = codec_corpus::Corpus::with_cache_root("/corpus").unwrap();
+
+// These work — they only read the filesystem
+assert!(corpus.is_cached("webp-conformance"));
+let datasets = corpus.list_cached();
+let path = corpus.get("webp-conformance").unwrap();
+
+// This returns Error::DownloadUnsupported — by design
+let err = corpus.get("not-yet-cached").unwrap_err();
+// "downloads are not supported on this platform; dataset 'not-yet-cached' must be pre-cached on the host"
+```
+
+Calling `get()` for an uncached dataset on WASM returns `Error::DownloadUnsupported` (not `NetworkUnavailable`). This is intentional — downloads must happen host-side.
+
 ## Dependencies
 
 Two Rust crates, both small:
