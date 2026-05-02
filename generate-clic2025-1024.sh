@@ -121,5 +121,51 @@ for fn in sorted(os.listdir(outdir)):
 print(f"  {fixed} files updated with sRGB chunk", file=sys.stderr)
 PYTHON
 
+# Write/refresh license + readme so the output dir is self-documenting
+# even though it's gitignored. Inherits the upstream Unsplash license
+# from clic2025/ exactly (these are deterministic Lanczos crops).
+cat > "$OUTDIR/LICENSE" <<'EOF'
+CLIC 2025 — 1024×1024 derivative variants
+==========================================
+
+These files are deterministic transforms (Lanczos resize + center
+smartcrop, 8-bit sRGB) of images from ../clic2025/ and inherit that
+dataset's licensing exactly: the Unsplash License.
+
+Unsplash License
+----------------
+https://unsplash.com/license
+
+The Unsplash License grants an irrevocable, nonexclusive, worldwide
+copyright license to download, copy, modify, distribute, perform, and
+use photos from Unsplash for free, including for commercial purposes,
+without permission from or attributing the photographer or Unsplash.
+
+See ../clic2025/LICENSE for the full upstream license text.
+
+Generation script: ../generate-clic2025-1024.sh
+EOF
+cat > "$OUTDIR/README.md" <<'EOF'
+# CLIC 2025 — 1024×1024 center-cropped variants
+
+PNG files at 1024×1024, 8-bit sRGB. Derived from the
+[CLIC 2025 dataset](../clic2025/) by `vipsthumbnail` Lanczos resize +
+center smartcrop, then re-tagged with a proper sRGB PNG chunk.
+
+License inherits exactly from the upstream
+[Unsplash License](https://unsplash.com/license) — see [LICENSE](LICENSE)
+or [`../clic2025/LICENSE`](../clic2025/LICENSE).
+
+Filenames are the SHA-256 of the cropped output. This directory is
+**gitignored** — the canonical source is the script
+[`../generate-clic2025-1024.sh`](../generate-clic2025-1024.sh).
+
+Regenerate from upstream:
+```bash
+bash generate-clic2025-1024.sh
+```
+EOF
+
 total=$((count + skipped))
 echo "Done. ${count} generated, ${skipped} skipped (already exist). ${total} total in ${OUTDIR}/" >&2
+echo "  License + README written to ${OUTDIR}/" >&2
