@@ -54,6 +54,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod corruptions;
 mod download;
 mod registry;
 

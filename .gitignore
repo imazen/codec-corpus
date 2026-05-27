@@ -20,3 +20,9 @@ qoi-benchmark/.tmp_download/
 
 # wasm test temp directory (created by tests::wasm::test_read_only_cache)
 crate/.corpus-test-tmp/
+
+# Multi-agent coordination marker (never committed)
+.workongoing
+
+# Corruption-corpus driver output (generated PNGs/JPEGs)
+crate/corruption-out/
