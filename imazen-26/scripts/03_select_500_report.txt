@@ -1,0 +1,72 @@
+# imazen-26-synth-500 selection report
+
+Total candidates: 10734
+BPP codecs used: ['bpp_jpeg', 'bpp_webp', 'bpp_avif'] (jxl dropped: zenjxl/jxl-encoder local build break)
+Feature cols (post variance filter): 29; content PCA dims: 8
+
+## BPP-only clustering (K=8) — cluster medians
+      bpp_jpeg  bpp_webp  bpp_avif     aw  feat_edge_density  feat_variance  feat_distinct_color_bins     n
+_lab                                                                                                       
+0        2.255     1.916     2.412  192.0              0.393       2521.884                    1361.0  1427
+1      223.719   121.312   231.828  512.0              0.040       1953.128                     133.0   909
+2      879.859   615.250  1092.969  512.0              0.167       4426.083                       9.0   539
+3       85.945    26.219    62.430  256.0              0.014        959.565                      32.0   412
+4        0.603     0.294     0.543  512.0              0.050       1173.922                     410.0  3213
+5      159.352    53.922   125.797  512.0              0.035       2372.765                      50.0   970
+6      424.906   221.125   450.922  512.0              0.077       2956.766                     118.0   657
+7        1.254     0.751     1.162  256.0              0.154       2971.061                     485.0  2607
+
+## Content-only clustering (K=8) — cluster medians
+      bpp_jpeg  bpp_webp  bpp_avif      aw  feat_edge_density  feat_variance  feat_distinct_color_bins     n
+_lab                                                                                                        
+0        1.062     0.753     1.111   256.0              0.056        538.995                     104.5  2232
+1        1.308     0.736     1.314   512.0              0.079       4302.117                     470.0  2531
+2        0.613     0.576     0.604  1229.0              0.067       3277.433                    3133.0   249
+3        1.544     0.860     1.524   192.0              0.171       4136.759                     485.0  1369
+4        2.802     2.657     3.598   192.0              0.383       4833.588                    1936.5   270
+5       65.938    22.219    44.672   512.0              0.039        788.251                     143.0  2724
+6        1.270     1.090     1.264   209.0              0.164       3183.299                    1165.0   367
+7        2.062     1.758     1.985   256.0              0.500       1118.060                     679.5   992
+
+## Joint clustering (K=8) — cluster medians
+      bpp_jpeg  bpp_webp  bpp_avif      aw  feat_edge_density  feat_variance  feat_distinct_color_bins     n
+_lab                                                                                                        
+0        0.625     0.301     0.553   512.0              0.060       2524.685                     529.5  2648
+1        1.424     0.778     1.398   256.0              0.174       4162.203                     577.0  1637
+2      473.719   216.938   523.312   512.0              0.086       4024.600                      72.0   763
+3        1.272     1.091     1.269   205.0              0.164       3193.692                    1179.0   363
+4      205.469    89.344   176.281   512.0              0.039       2229.266                      53.0  2745
+5        1.005     0.649     0.971   192.0              0.131        528.200                     234.0  2083
+6        2.775     2.625     3.555   192.0              0.395       4834.440                    1972.0   255
+7        0.621     0.581     0.605  1242.0              0.068       3279.434                    3205.5   240
+
+## Coarse content classes (K=7) population
+0     250
+1    2002
+2     370
+3    1148
+4    2395
+5    3593
+6     976
+
+## Joint K=500: 500 non-empty clusters -> initial picks 500
+## After per-source cap (<= 4) + backfill: 500 images
+   dropped-for-cap before backfill: 12
+## Content-class coverage in the 500
+   class 0: pool=250  selected=37
+   class 1: pool=2002  selected=116
+   class 2: pool=370  selected=55
+   class 3: pool=1148  selected=75
+   class 4: pool=2395  selected=69
+   class 5: pool=3593  selected=97
+   class 6: pool=976  selected=51
+
+## BPP-axis coverage (selected 500 vs full pool)
+   bpp_jpeg: selected[min=0.0244 p50=1.7041 max=1855.7500]  pool[min=0.0244 p50=1.6074 max=2004.2031]
+   bpp_webp: selected[min=0.0136 p50=1.2916 max=2026.1875]  pool[min=0.0136 p50=1.0353 max=2174.7188]
+   bpp_avif: selected[min=0.0044 p50=1.7528 max=2191.8750]  pool[min=0.0044 p50=1.5291 max=2332.8438]
+
+## Dimension span (max-dim) in 500:
+   maxdim min=128 p50=384 max=2048
+   unique sources in 500: 329 (cap 4/source)
+   source-count distribution: {1: 221, 2: 65, 3: 23, 4: 20}
