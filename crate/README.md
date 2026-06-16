@@ -11,6 +11,8 @@ for entry in std::fs::read_dir(valid)? {
 }
 ```
 
+`get()` returns a `PathBuf` to **encoded** image bytes on disk — a directory of dataset files, or a single file when you pass a path to one. It does **no decoding**: `std::fs::read` the path (or walk the directory) to get the raw bytes, then hand them to your own decoder. On a cold cache, `get()` performs a **blocking subprocess download** (`git`, falling back to `curl`/`wget`/`powershell`), so first use needs network access and one of those binaries — gate it behind `#[ignore]` in tests.
+
 ## What it does
 
 1. You call `corpus.get("some-folder/optional-subpath")`
