@@ -30,6 +30,7 @@ git sparse-checkout add CID22 gb82-sc qoi-benchmark
 |---------|--------|------|------------|---------|----------|
 | [CLIC 2025](#clic-2025) | 62 | 219 MB | ~2048px long edge | Unsplash | High-res lossy quality calibration |
 | [CID22](#cid22) | 250 | 94 MB | 512×512 | CC BY-SA 4.0 | Perceptual quality training, diverse content |
+| [imazen-26](#imazen-26) | 2,160 | 5.9 GB (originals) | 0.2–124 MP | Mostly PD/PD-own | Real-world diversity: photos, scans, screenshots, AI-gen, docs; train/val split + representative subsets |
 | [KADID-10k](#kadid-10k) | 81 | 25 MB | 512×384 | Pixabay | IQA research reference images |
 | [GB82](#gb82) | 25 | 9.6 MB | 576×576 | CC0 | Compact photographic benchmarking |
 | [GB82-SC](#gb82-sc) | 10 | 2.9 MB | Various (640–2940px) | CC0 | Screen content & screenshot compression |
@@ -94,6 +95,29 @@ For compression benchmarking, CID22 is one of the best choices available: it was
 - **Resolution**: 512×512, 8-bit sRGB
 - **Source**: https://github.com/Cloudinary/CID22
 - **License**: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) — Free for any use, attribution required. Derivative works must use the same license.
+
+---
+
+### imazen-26
+
+**21-category real-world corpus** — 2,160 images / 5.9 GB spanning the hard cases codecs
+trip on: photographic noise, hard-edged vector graphics, bilevel scan texture, dense text,
+large flat regions. Mixes real photographs, stock photography, artwork reproductions,
+born-digital government documents, manuscript scans, synthetic charts, UI screenshots, and
+AI-generated graphics. ~2,128 of 2,160 files are public-domain or PD-own.
+
+Hosted on R2, not in this repo — full public-URL index, train/val split manifests,
+representative-subset selections, and a cropscale set are all at
+[`imazen-26/ACCESS.md`](imazen-26/ACCESS.md). Two layers are available:
+
+| Layer | Size | Notes |
+|-------|------|-------|
+| Raw originals (jpg/heic/png/dng) | 6.99 GB | Home-state GPS stripped; travel-location GPS intentionally retained as landmark metadata — see privacy note in `ACCESS.md` before use |
+| PNG derivatives (codec-test-ready) | 16 GB | SDR + HDR renders, no EXIF/GPS at all |
+
+- **Resolution**: 0.2–124 MP, varies by category
+- **Source**: lilith's own photography + Unsplash + Art Institute of Chicago + The Met + US federal agencies (NPS/EPA/NOAA) + Internet Archive + AI-generated
+- **License**: mixed per-folder — see `imazen-26/README.md` for the full breakdown (PD-own, PD, PD-USGov, Unsplash License, CC0); 32 mobile-screenshot files are **screenshot-unverified**, excluded from redistribution
 
 ---
 
