@@ -43,7 +43,57 @@ folder, which is why an earlier trace of this map (2026-06-25) missed it:
 
 Credentials + bucket-listing method: `~/work/claudehints/topics/r2-credentials.md`.
 
-## The privacy strip (stage 3), exactly
+## The privacy strip (stage 3) — history and current state
+
+**2026-07-23 — full re-strip, superseding everything below this line.** The
+original strip (history preserved further down) only targeted a fixed field
+list and missed vendor-specific tags. A follow-up sweep (`exiftool -a -G1 -u`
+across all 319 files in `{1000,1200,1400,1600}`, cross-referencing every tag
+group present) found: **live GPS on 241 files** (all locations, not just
+non-Colorado — the earlier "Colorado-only by design" scoping, below, is now
+superseded: all GPS is removed, everywhere), a real device serial number
+(`GoPro:CameraSerialNumber`, 3 files, GoPro's proprietary tag group — the
+original field list only covered the standard EXIF `SerialNumber` tags, not
+vendor maker-note equivalents) and `Apple:MediaGroupUUID` (4 files, burst/
+live-photo grouping IDs — not personally identifying alone, but an unremoved
+device-fingerprint field the original strip's stated intent already covered).
+Checked and ruled out as a concern: `XMP-mwg-rs:RegionType` (present but
+`Focus` — autofocus point metadata, not Photos.app person/face tagging; no
+name field exists anywhere in the corpus).
+
+Re-run as a **whitelist** rewrite (`exiftool -all= -tagsFromFile @ <keep-list>
+-icc_profile -m -overwrite_original`) rather than the original's blacklist —
+strips everything not explicitly kept, so unknown/future proprietary tags
+fail closed instead of silently surviving. Keep-list: Make, Model, LensMake,
+LensModel, UniqueCameraModel, FNumber, ExposureTime, ISO, FocalLength(+35mm),
+ApertureValue, ShutterSpeedValue, DateTimeOriginal/CreateDate/ModifyDate/
+SubSecTimeOriginal, Orientation, ColorSpace, WhiteBalance, Flash,
+ExposureProgram, MeteringMode, ExposureCompensation, LensInfo, ICC profile.
+
+Verified before and after, all formats present (jpg/heic/dng/png): decoded
+pixel data byte-identical (PIL/pillow-heif hash compare, 20-file random
+sample against untouched R2 originals) plus an explicit raw-strip
+byte-range compare for DNG (PIL can't decode Samsung linear-DNG; extracted
+the exact `StripByteCounts` region via `dd` and `sha256sum`-matched it —
+same length, same bytes, offset shifted only because the metadata block
+size changed). Post-strip: 0/319 files have GPS, GoPro serial, or Apple
+UUID; Make/Model present on 308/319 (the rest never had camera EXIF to
+begin with — screenshots etc.); ICC profile present on 274/319.
+Re-uploaded to R2 (`imazen-26-unprocessed/{1000,1200,1400,1600}-lilith-*/`),
+overwriting the GPS-carrying versions; verified live on the public domain.
+
+**Not touched by this pass:** the other 17 categories (Unsplash/Met/AIC/
+Internet Archive/government-doc/AI-gen/screenshot) — confirmed zero GPS
+there in the original scan, and some may carry license-relevant attribution
+metadata (CC-BY-SA credit, etc.) that a blanket whitelist-strip could wrongly
+remove; out of scope for a same-day GPS fix. The `bytes` column in
+`CORPUS-MANIFEST.tsv` / per-folder `MANIFEST.tsv` is now slightly stale
+(files shrank a little) — not regenerated in this pass, cosmetic only.
+`imazen-26 - Copy (2)/` and other local duplicate directories were **not**
+touched (still carry the original GPS-including EXIF) — not part of the
+published surface, but flagging in case they get used as a source later.
+
+### Original strip, as first implemented (superseded above, kept for history)
 
 `strip_pii_with_gainmap_diff.py` runs `exiftool -overwrite_original` in-place on
 `imazen-26/{1000,1200,1400,1600}`, diffing against the stage-2 backup:
@@ -51,19 +101,20 @@ Credentials + bucket-listing method: `~/work/claudehints/topics/r2-credentials.m
 - **Removed** (device fingerprinting): `SerialNumber`, `LensSerialNumber`,
   `BodySerialNumber`, `InternalSerialNumber`, `Software`, `HostComputer`,
   `ImageUniqueID`, `MediaGroupUUID`, `DocumentID`, `InstanceID`,
-  `OriginalDocumentID`, `ImageDescription`.
+  `OriginalDocumentID`, `ImageDescription`. (Turned out incomplete — see above.)
 - **Kept**: camera model, ISO, f-number, exposure, dates, all attribution.
 - **Verified byte-identical** after strip: gain maps (43 HEIC aux + 36 JPEG MPF) and
   primary pixels. This is *selective field removal*, not a full EXIF wipe — which is why
   corpus files are only ~46–370 bytes smaller than their originals.
-- **GPS scope, verified empirically 2026-07-22** (this doc previously claimed GPS was
-  stripped everywhere — wrong, corrected below): raw GPS is stripped **only from
-  Colorado-tagged content** (48/48 `*colorado*`-named files checked have zero GPS tags —
-  home-state location, the actually sensitive signal). GPS from every other location is
-  **intentionally retained** — 238 files carry live coordinates across dozens of one-off
-  travel destinations (Iceland, Japan, Barcelona, Seattle, Mexico, France, Costa Rica,
-  Hawaii, …), none repeating often enough to suggest a second home. This is a deliberate,
-  scoped privacy design (hide where you live, keep travel/landmark metadata), not a bug.
+- **GPS scope, as originally verified 2026-07-22** (superseded 2026-07-23 — all GPS is
+  now stripped, see above): raw GPS was stripped **only from Colorado-tagged content**
+  (48/48 `*colorado*`-named files checked had zero GPS tags — home-state location, the
+  actually sensitive signal). GPS from every other location was retained — 238 files
+  carried live coordinates across dozens of one-off travel destinations (Iceland, Japan,
+  Barcelona, Seattle, Mexico, France, Costa Rica, Hawaii, …), none repeating often enough
+  to suggest a second home. This was confirmed as a deliberate, scoped privacy design
+  (hide where you live, keep travel/landmark metadata) rather than a bug — the decision
+  was then revisited and all GPS is now removed regardless of location.
   Location is additionally preserved as landmark names baked into filenames by
   `add_gps_locations.py` + `add_landmarks.py` (geocode / nominatim / overpass caches in
   the archive) — this runs regardless of the GPS-stripping scope above.

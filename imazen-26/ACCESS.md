@@ -12,13 +12,17 @@ of every stage; this page is the "just give me a URL" index.
 
 ## Privacy scope — read before use
 
-Home-state (Colorado) GPS is stripped from every photo; GPS from travel/vacation
-locations elsewhere is **intentionally retained** as landmark metadata (verified
-2026-07-22: 0/48 Colorado-tagged files carry GPS, vs. 238 files across dozens of
-one-off travel destinations that do — see `STORAGE-MAP.md` for the full check).
-This is a deliberate scope, not a redaction failure — but it means the raw
-originals below are **not** GPS-free in general. The PNG derivatives (below) do
-not carry EXIF/GPS at all (4/4 samples checked, PNG conversion drops it).
+**All GPS is stripped** from the raw originals in the four personal-photo categories
+(`1000/1200/1400/1600`) — re-verified 2026-07-23 after an initial pass only covered
+Colorado (home-state) content; extended to every location. A whitelist rewrite
+(strip everything, restore only camera/exposure fields — see `STORAGE-MAP.md`) also
+removed a real device serial number and some tracking UUIDs the original strip's
+field list missed. Verified: 0/319 files carry GPS/serial/UUID afterward; decoded
+pixel data confirmed byte-identical to the pre-strip originals (all four formats:
+jpg/heic/png/dng). Camera make/model, lens, and exposure settings are preserved.
+The other 17 categories were never affected (confirmed zero GPS there originally)
+and weren't touched by this pass. The PNG-v3 derivatives (below) never carried
+EXIF/GPS at all (PNG conversion drops it).
 
 ## 1. Raw corpus (originals, privacy-scoped per above)
 
