@@ -255,72 +255,23 @@ let err = corpus.get("not-yet-cached").unwrap_err();
 
 Calling `get()` for an uncached dataset on WASM returns `Error::DownloadUnsupported` (not `NetworkUnavailable`). This is intentional — downloads must happen host-side.
 
-## Structural-corruption corpus (`corruptions` module)
+## Structural-corruption corpus
 
-A held-out **falsification set for a perceptual metric's negative tail**:
-localized structural defects no honest encoder would produce (a channel swap, a
-dropped block, an off-by-one edge), which a faithful metric must rank *below* an
-honestly-lossy encode of the same reference. The gate every entry asserts:
-
-```text
-score(reference, corruption) < score(reference, honest_lq_anchor)   // JPEG q20 / q10
-```
-
-Ten distortion families, each parameterized by region size (whole-image → 1/4 →
-1/16 → 64×64 → 16×16 → 8×8) and severity (opaque → 50% → 20% opacity):
-
-1. **Channel** — invert / swap (RGB↔BGR, R↔G, …) / zero a plane in a rectangle.
-2. **Block** — zero / gray / garbage / copy-wrong / repeat-neighbor (dropped MCUs).
-3. **Edge** — k-px border, 1px interior shift, duplicated row (partial-MCU / off-by-one).
-4. **Noise** — salt-and-pepper, single-bit flips.
-5. **Tone** — wrong sRGB gamma, local contrast boost, brightness offset, in a block.
-6. **Overlay** — low-opacity rect / line / glyph (render leak / watermark bleed).
-7. **Chroma boundary** — wrong-phase chroma upsample at 8px block edges.
-8. **Aliasing** — nearest-neighbor downscale→upscale (resampler bug).
-9. **Geometric** — 1px shift / flip / 90° rotate of a region.
-10. **Composite** — premultiplied-as-straight alpha, wrong background color.
-
-Generators are **deterministic** (seeded from `(ref_id, seed, params)` via a
-dependency-free SplitMix64 — same bytes on every platform) and **pure RGB-buffer
-math** (no image decoding needed to apply a corruption), so they stay in the
-default build and compile to WASM. **No corrupted images are committed** — the
-corpus is reproduced on demand from the curated reference set already in this
-repo (CLIC2025, CID22, KADID-10k, GB82, GB82-SC, …).
-
-```rust
-use codec_corpus::corruptions::{Rgb8, Family, ChannelOp, CorruptionParams, Region, Severity};
-
-let mut img = Rgb8::filled(64, 64, [128, 128, 128]);
-let params = CorruptionParams {
-    family: Family::Channel(ChannelOp::SwapRb),
-    region: Region::Fraction(4), // 1/4 of the image
-    severity: Severity::Opaque,
-};
-params.apply(&mut img, /* seed */ 1);
-```
-
-The **driver** (behind the `driver` feature, which pulls in the `image` crate)
-loads a reference and emits the score-ready quad `(reference, corruption,
-q20-anchor, q10-anchor)`. The `corruption_corpus` example writes those plus a
-`_MANIFEST.json` to an output dir:
-
-```bash
-cargo run --example corruption_corpus --features driver -- \
-    --ref ../gb82-sc/imac_g3_strip.png --ref-id gb82-sc/imac_g3_strip \
-    --class screen --out /tmp/corruption-out
-```
-
-Real-bug reproductions of historical decoder/renderer defects are tracked
-separately; the manifest's `source` field reserves a `real_bug` slot for them.
+The structural-corruption *generator* — a held-out falsification set for a
+perceptual metric's negative tail (channel swaps, dropped blocks, off-by-one
+edges, and seven more deterministic distortion families) — lives in the sibling
+**[`corruption-corpus`](corruption-corpus/)** workspace crate, decoupled from
+this fetcher. See its [README](corruption-corpus/README.md) for the family
+catalog, the `score(corruption) < score(q20-anchor)` gate, and the
+`corruption_corpus` generator example.
 
 ## Dependencies
 
-Five Rust crates, all small (`image` is optional, gated behind the `driver` feature):
+Four Rust crates, all small:
 
 - `dirs` — cross-platform cache directory
 - `fd-lock` — file locking for concurrent safety (native only, not on WASM)
 - `serde` + `serde_json` — manifest parsing for R2/JSONL corpus sources
-- `image` — *(optional, `driver` feature only)* reference decode + JPEG anchor encode
 
 Archive extraction uses system commands (`tar`, `unzip`, `powershell`). No `reqwest`, `ureq`, `gix`, or `toml`.
 

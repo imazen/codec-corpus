@@ -2,9 +2,8 @@
 
 ## [Unreleased]
 
-### Added
-- **`corruptions` module**: structural-corruption distortion corpus — a held-out falsification set for a perceptual metric's negative tail. Ten deterministic (SplitMix64-seeded, dependency-free) distortion families parameterized by region size + severity, plus a `ManifestEntry` schema and the `catalog()` / `manifest_for_reference()` sweep generators. Pure RGB-buffer math; stays in the default build and compiles to WASM.
-- **`driver` feature** (optional `image` dep): `corruptions::driver` builds the score-ready quad `(reference, corruption, q20-anchor, q10-anchor)` for the metric gate `score(corruption) < score(q20)`, plus the `corruption_corpus` example that emits images + `_MANIFEST.json` on demand (no corrupted bytes committed).
+### Changed
+- Extracted the structural-corruption generator — which briefly lived here as the `corruptions` module + optional `driver` feature (never shipped in a tagged codec-corpus release) — into a new sibling workspace crate, [`corruption-corpus`](corruption-corpus/README.md), decoupling the corpus *fetcher* from the corruption *generator*. codec-corpus no longer depends on the `image` crate; the `driver` feature and the `corruption_corpus` example now live in `corruption-corpus`.
 
 ## [1.1.0] - 2026-04-14
 

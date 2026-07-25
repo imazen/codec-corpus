@@ -5,7 +5,7 @@
 
 #![cfg(feature = "driver")]
 
-use codec_corpus::corruptions::{
+use corruption_corpus::{
     ChannelOp, ContentClass, CorruptionParams, Family, Region, Rgb8, Severity, catalog, driver,
     manifest_for_reference,
 };
@@ -92,7 +92,7 @@ fn manifest_entries_drive_the_builder() {
     for entry in entries.iter().step_by(37) {
         let from_entry =
             driver::build_quad(&reference, &entry.ref_id, &entry.params, entry.seed).unwrap();
-        let recomputed_seed = codec_corpus::corruptions::prng::seed_for(&entry.ref_id, 5);
+        let recomputed_seed = corruption_corpus::prng::seed_for(&entry.ref_id, 5);
         assert_eq!(entry.seed, recomputed_seed);
         // Rebuild with the recomputed seed → identical corruption.
         let again =

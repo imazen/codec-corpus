@@ -1,0 +1,40 @@
+[package]
+name = "corruption-corpus"
+version = "0.1.0"
+edition = "2024"
+description = "Deterministic structural-corruption image generator — a held-out falsification set for a perceptual metric's negative tail (channel swaps, dropped blocks, off-by-one edges, bit-flips, geometric, chroma-boundary, overlay, tone)"
+license = "Apache-2.0"
+repository = "https://github.com/imazen/codec-corpus"
+readme = "README.md"
+keywords = ["image", "corruption", "test-data", "perceptual", "metric"]
+categories = ["development-tools::testing", "multimedia::images"]
+rust-version = "1.85"
+
+[lib]
+name = "corruption_corpus"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+# `image` is only needed by the `driver` feature (loading reference images +
+# encoding/decoding JPEG anchors). The corruption generators themselves are pure
+# RGB-buffer math with no decode dependency, so they stay in the default build
+# and remain wasm-clean.
+image = { version = "0.25.10", optional = true, default-features = false, features = [
+    "png",
+    "jpeg",
+] }
+
+[dev-dependencies]
+serde_json = "1"
+
+[features]
+default = []
+# Enables the corruption `driver` module which loads reference PNGs and emits
+# JPEG q20/q10 honest-lq anchors via the `image` crate. Without it, only the
+# seeded in-memory generators + manifest types are available.
+driver = ["dep:image"]
+
+[[example]]
+name = "corruption_corpus"
+required-features = ["driver"]

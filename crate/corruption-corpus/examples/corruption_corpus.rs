@@ -8,7 +8,7 @@
 //!      a metric (e.g. zensim) can score the gate `score(corruption) < score(q20)`.
 //!
 //! Nothing large is committed to git: outputs land in a `--out` dir (gitignored
-//! `crate/corruption-out/` by default) and are reproducible on demand from
+//! `corruption-out/` by default) and are reproducible on demand from
 //! `(ref_id, seed, params)`.
 //!
 //! ## Usage
@@ -27,7 +27,7 @@
 
 use std::path::{Path, PathBuf};
 
-use codec_corpus::corruptions::{ContentClass, ManifestEntry, driver, manifest_for_reference};
+use corruption_corpus::{ContentClass, ManifestEntry, driver, manifest_for_reference};
 
 struct Args {
     references: Vec<(PathBuf, String, ContentClass)>,
@@ -148,7 +148,7 @@ fn print_help() {
 fn write_entry_images(
     out_dir: &Path,
     entry: &ManifestEntry,
-    reference: &codec_corpus::corruptions::Rgb8,
+    reference: &corruption_corpus::Rgb8,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let quad = driver::build_quad(reference, &entry.ref_id, &entry.params, entry.seed)?;
     let slug = entry.params.slug();

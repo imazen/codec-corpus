@@ -133,7 +133,7 @@ pub fn encode_png(img: &Rgb8) -> Result<Vec<u8>, DriverError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::corruptions::{ChannelOp, Family, Region, Severity};
+    use crate::{ChannelOp, Family, Region, Severity};
 
     fn checker(w: u32, h: u32) -> Rgb8 {
         let mut data = Vec::with_capacity((w * h * 3) as usize);

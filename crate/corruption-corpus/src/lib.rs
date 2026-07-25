@@ -30,7 +30,7 @@
 //! ## Example
 //!
 //! ```
-//! use codec_corpus::corruptions::{Rgb8, Family, ChannelOp, CorruptionParams, Region, Severity};
+//! use corruption_corpus::{Rgb8, Family, ChannelOp, CorruptionParams, Region, Severity};
 //!
 //! // A flat gray 64x64 reference.
 //! let mut img = Rgb8::filled(64, 64, [128, 128, 128]);
@@ -42,6 +42,8 @@
 //! params.apply(&mut img, /* seed */ 1);
 //! // img now has a region with R and B swapped.
 //! ```
+
+#![forbid(unsafe_code)]
 
 pub mod prng;
 

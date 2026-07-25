@@ -44,6 +44,14 @@ version = "1.1.0"
 dependencies = [
  "dirs",
  "fd-lock",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "corruption-corpus"
+version = "0.1.0"
+dependencies = [
  "image",
  "serde",
  "serde_json",
