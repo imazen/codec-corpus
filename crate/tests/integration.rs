@@ -34,7 +34,7 @@ fn download_pngsuite() {
     let pngs: Vec<_> = std::fs::read_dir(&dir)
         .unwrap()
         .filter_map(Result::ok)
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "png"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "png"))
         .collect();
     assert!(!pngs.is_empty(), "expected png files in pngsuite");
 
