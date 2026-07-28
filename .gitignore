@@ -20,3 +20,9 @@ qoi-benchmark/.tmp_download/
 
 # wasm test temp directory (created by tests::wasm::test_read_only_cache)
 crate/.corpus-test-tmp/
+
+# Per-agent work-coordination marker (CLAUDE.md global)
+.workongoing
+
+# Workspace artifacts not part of the corpus
+picker-train/
