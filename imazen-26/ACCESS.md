@@ -7,28 +7,25 @@ credentials, no presigned URLs. Base URL for every item on this page:
 https://codec-corpus.r2.imazen.org/<key>
 ```
 
-See [`STORAGE-MAP.md`](STORAGE-MAP.md) for the full local/tower/R2 provenance
-of every stage; this page is the "just give me a URL" index.
+See [`STORAGE-MAP.md`](STORAGE-MAP.md) for the canonical-vs-derived layer map and
+the metadata policy; this page is the "just give me a URL" index.
 
-## Privacy scope — read before use
+## Metadata policy — read before use
 
-**All GPS is stripped** from the raw originals in the four personal-photo categories
-(`1000/1200/1400/1600`) — re-verified 2026-07-23 after an initial pass only covered
-Colorado (home-state) content; extended to every location. A whitelist rewrite
-(strip everything, restore only camera/exposure fields — see `STORAGE-MAP.md`) also
-removed a real device serial number and some tracking UUIDs the original strip's
-field list missed. Verified: 0/319 files carry GPS/serial/UUID afterward; decoded
-pixel data confirmed byte-identical to the pre-strip originals (all four formats:
-jpg/heic/png/dng). Camera make/model, lens, and exposure settings are preserved.
-The other 17 categories were never affected (confirmed zero GPS there originally)
-and weren't touched by this pass. The PNG-v3 derivatives (below) never carried
-EXIF/GPS at all (PNG conversion drops it).
+The published files in the four camera-photo categories (`1000/1200/1400/1600`)
+carry **whitelist EXIF only**: camera make/model, lens, exposure parameters,
+capture dates, orientation, color space, and the ICC profile. No location tags,
+no serial numbers, no device or asset UUIDs — in any tag group, in any format
+(jpg/heic/png/dng); the whitelist rewrite fails closed on unknown vendor tags
+(policy + verification method: `STORAGE-MAP.md`). Decoded pixel data, including
+gain maps, is hash-verified unchanged by the rewrite. The other 17 categories
+retain the attribution-relevant metadata their licenses expect, and the PNG-v3
+derivatives (below) carry no EXIF at all (PNG conversion drops it).
 
-## 1. Raw corpus (originals, privacy-scoped per above)
+## 1. Raw corpus (originals, metadata policy per above)
 
 `s3://codec-corpus/imazen-26-unprocessed/` — 2,688 objects, 6.99 GB. Full
-21-category structure, original jpg/heic/png/dng formats, home-state GPS
-stripped as described above.
+21-category structure, original jpg/heic/png/dng formats.
 
 ```
 https://codec-corpus.r2.imazen.org/imazen-26-unprocessed/<category>/<filename>
