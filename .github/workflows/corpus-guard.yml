@@ -1,0 +1,21 @@
+name: corpus-guard
+on: [push, pull_request]
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: forbid non-canonical corpus paths in the index
+        run: |
+          set -e
+          bad=$(git ls-files -z | tr '\0' '\n' | grep -E '^(imazen-26 - Copy|imazen26/|imazen-26-not-pd/|imazen-26/nope/)|\.lnk$' || true)
+          if [ -n "$bad" ]; then echo "Forbidden non-canonical paths tracked:"; echo "$bad"; exit 1; fi
+      - name: forbid oversized blobs outside the LFS policy
+        run: |
+          set -e
+          big=""
+          while IFS= read -r -d '' f; do
+            sz=$(stat -c%s "$f" 2>/dev/null || echo 0)
+            if [ "$sz" -gt 26214400 ]; then big="$big$f ($sz bytes)"$'\n'; fi
+          done < <(git ls-files -z)
+          if [ -n "$big" ]; then echo "Files >25MB tracked outside LFS:"; echo "$big"; exit 1; fi

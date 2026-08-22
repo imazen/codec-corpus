@@ -20,3 +20,12 @@ qoi-benchmark/.tmp_download/
 
 # wasm test temp directory (created by tests::wasm::test_read_only_cache)
 crate/.corpus-test-tmp/
+
+# Non-canonical corpus working copies must never enter the index (see imazen-26/STORAGE-MAP.md)
+imazen-26 - Copy*/
+imazen26/
+imazen-26-not-pd/
+imazen-26/nope/
+imazen-26-synth/
+imazen-26-synth-500/
+*.lnk
