@@ -52,18 +52,27 @@ https://codec-corpus.r2.imazen.org/imazen-26-png-v3/<category>/<basename>.sdr.pn
 https://codec-corpus.r2.imazen.org/imazen-26-png-v3/<category>/<basename>.hdr.png   (gain-map images only)
 ```
 
-## 3. Train / val manifests
+## 3. Canonical split manifests (train / validate / test)
 
-[`manifests/train.tsv`](manifests/train.tsv) (1,910 rows) and
-[`manifests/val.tsv`](manifests/val.tsv) (323 rows) — one row per PNG-v3
-file (sdr + hdr variants each get a row), with a direct public URL per row.
-Columns: `id, split, content_class, variant, relative_path, url`.
+The canonical split is deterministic, by the **last digit of the image id**:
+`{0,2,4,6,8}` = train, `{1,3,5}` = validate, `{7,9}` = test. One row per corpus
+image, with sha256 and direct raw + PNG-v3 URLs per row:
 
-**No `test` split exists.** The only split manifest found (`picker-sweep-2026-06-22/imazen26_manifest.tsv`,
-the source these are built from) has just `train`/`val`. These two manifests
-cover 2,157 of the corpus's 2,567 images — the subset that manifest tracks,
-not the full corpus (see `STORAGE-MAP.md` if you need the full-corpus list,
-`CORPUS-MANIFEST.tsv`).
+- [`manifests/train.tsv`](manifests/train.tsv) — 1,084 rows
+- [`manifests/validate.tsv`](manifests/validate.tsv) — 658 rows
+- [`manifests/test.tsv`](manifests/test.tsv) — 418 rows
+- [`manifests/split_map.tsv`](manifests/split_map.tsv) — the bare id→split map (2,160 rows)
+
+Columns: `id, split, content_class, path, width, height, format, bytes_manifest,
+bytes_actual, sha256, raw_url, png_v3_sdr_url`. Regenerate with
+`imazen-26/scripts/make_canonical_split.py`; browsable per-bucket folder views live
+under `imazen-26/splits/`. Derived datasets inherit an image's bucket by id — never
+invent a per-dataset split (details + near-duplicate caveats:
+[`manifests/README.md`](manifests/README.md)).
+
+The pre-2026-08 `manifests/{train,val}.tsv` (an ~86/14 split over PNG-v3 render rows,
+no test bucket) are superseded and removed; interpret datasets built on them through
+`split_map.tsv`.
 
 ## 4. Representative subsets
 
@@ -97,4 +106,4 @@ by content hash — flagging for anyone who needs a hard provenance chain.*
 sweeps, HDR zenjxl passes, named benchmark runs) at
 `s3://codec-corpus/picker-sweep-2026-06-22/` — same public-URL pattern as
 above. Full breakdown (sizes, sub-prefixes, what's confirmed vs. not) is in
-[`STORAGE-MAP.md`](STORAGE-MAP.md#r2-mirror-found-2026-07-22--corrects-backup-coverage-gaps-below).
+[`STORAGE-MAP.md`](STORAGE-MAP.md).
