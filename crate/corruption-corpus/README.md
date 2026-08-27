@@ -86,6 +86,27 @@ cargo run -p corruption-corpus --example corruption_corpus --features driver -- 
     --class screen --out ./corruption-out
 ```
 
+### Reference set: ≥ 5 content classes × ≥ 10 references
+
+The `references` module selects references from the public **imazen-26**
+corpus via the manifests checked into this repo
+(`imazen-26/manifests/{train,val}.tsv`, one public PNG URL per image).
+`references::content_class_for_category` folds the manifest's 21 categories
+into the five `ContentClass`es (photo / screen / line-art / text / gradient);
+`references::select_per_class` picks a deterministic, seeded, category-balanced
+set. The example downloads them with `curl` and runs the catalog over all of
+them:
+
+```bash
+cargo run -p corruption-corpus --example corruption_corpus --features driver -- \
+    --refs-tsv ../imazen-26/manifests/train.tsv --per-class 10 \
+    --out ./corruption-out --manifest-only
+```
+
+A test pins the fold against the checked-in manifest, so every class has at
+least ten selectable references and a newly added category cannot go
+unclassified silently.
+
 Real-bug reproductions of historical decoder/renderer defects are tracked
 separately; the manifest's `source` field reserves a `real_bug` slot for them.
 

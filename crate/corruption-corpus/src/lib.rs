@@ -46,6 +46,7 @@
 #![forbid(unsafe_code)]
 
 pub mod prng;
+pub mod references;
 
 mod families;
 

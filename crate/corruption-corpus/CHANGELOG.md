@@ -19,6 +19,13 @@
   "defect". The `corruption_corpus` example uses it and reports the count. (#9)
 
 ### Added
+- `references` module: selects the ≥ 5 content classes × ≥ 10 references
+  sweep set from the public imazen-26 corpus manifests checked into this repo
+  (`content_class_for_category` folds the 21 imazen-26 categories into the
+  five `ContentClass`es; `parse_imazen26_manifest` + `select_per_class` pick a
+  deterministic, category-balanced set). The `corruption_corpus` example
+  gained `--refs-tsv` / `--per-class` / `--refs-dir` to download and sweep
+  them. (#7)
 - **Initial crate**, landed on `main` as a workspace member of the
   `codec-corpus` repo (from PR #8), kept separate from the corpus *fetcher* so
   the generator has no download/registry code and the fetcher has no `image`

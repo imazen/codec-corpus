@@ -31,8 +31,11 @@ use corruption_corpus::{
     ContentClass, ManifestEntry, driver, manifest_for_image, manifest_for_reference,
 };
 
+/// One reference to sweep: `(local path, ref_id, content class)`.
+type RefSpec = (PathBuf, String, ContentClass);
+
 struct Args {
-    references: Vec<(PathBuf, String, ContentClass)>,
+    references: Vec<RefSpec>,
     out: PathBuf,
     manifest_only: bool,
     base_seed: u64,
@@ -41,6 +44,54 @@ struct Args {
     /// Print per-entry error stats vs the reference (changed pixels, luma /
     /// chroma RMSE) — the measurement used to diagnose imazen/codec-corpus#9.
     stats: bool,
+    /// imazen-26 manifest TSV to select `per_class` references per content
+    /// class from (downloaded into `refs_dir` with curl).
+    refs_tsv: Option<PathBuf>,
+    per_class: usize,
+    refs_dir: Option<PathBuf>,
+}
+
+/// Select references from an imazen-26 manifest and download them (skipping
+/// files already present). Returns `(path, ref_id, class)` triples in the
+/// same shape as `--ref` arguments.
+fn resolve_manifest_references(
+    tsv: &Path,
+    per_class: usize,
+    refs_dir: &Path,
+    seed: u64,
+) -> Result<Vec<RefSpec>, Box<dyn std::error::Error>> {
+    use corruption_corpus::references::{parse_imazen26_manifest, select_per_class};
+    let text = std::fs::read_to_string(tsv)?;
+    let entries = parse_imazen26_manifest(&text)?;
+    let picked = select_per_class(&entries, per_class, seed);
+    std::fs::create_dir_all(refs_dir)?;
+    let mut out = Vec::new();
+    for e in &picked {
+        let dest = refs_dir.join(e.file_name());
+        if !dest.is_file() {
+            eprintln!("fetching {} -> {}", e.url, dest.display());
+            let tmp = refs_dir.join(format!(".{}.part", e.file_name()));
+            let ok = std::process::Command::new("curl")
+                .args(["-fsSL", "-o"])
+                .arg(&tmp)
+                .arg(&e.url)
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false);
+            if !ok {
+                let _ = std::fs::remove_file(&tmp);
+                eprintln!("skip {}: download failed", e.ref_id());
+                continue;
+            }
+            std::fs::rename(&tmp, &dest)?;
+        }
+        out.push((dest, e.ref_id(), e.class));
+    }
+    for class in ContentClass::all() {
+        let n = out.iter().filter(|(_, _, c)| *c == class).count();
+        eprintln!("{class:?}: {n} references");
+    }
+    Ok(out)
 }
 
 /// Per-entry error of a corruption vs its reference, BT.601 YCbCr.
@@ -112,6 +163,9 @@ fn parse_args() -> Args {
     let mut base_seed = 1u64;
     let mut family_filter = None;
     let mut stats = false;
+    let mut refs_tsv = None;
+    let mut per_class = 10usize;
+    let mut refs_dir = None;
 
     // A reference is described by a `--ref` followed (in any order) by its
     // `--ref-id` and `--class`. We accumulate the in-progress reference and
@@ -121,7 +175,7 @@ fn parse_args() -> Args {
     let mut pending_id: Option<String> = None;
     let mut pending_class = ContentClass::Photo;
 
-    let flush = |references: &mut Vec<(PathBuf, String, ContentClass)>,
+    let flush = |references: &mut Vec<RefSpec>,
                  r: &mut Option<PathBuf>,
                  id: &Option<String>,
                  class: ContentClass| {
@@ -155,6 +209,9 @@ fn parse_args() -> Args {
             "--seed" => base_seed = it.next().and_then(|s| s.parse().ok()).unwrap_or(1),
             "--family" => family_filter = it.next(),
             "--stats" => stats = true,
+            "--refs-tsv" => refs_tsv = it.next().map(PathBuf::from),
+            "--per-class" => per_class = it.next().and_then(|s| s.parse().ok()).unwrap_or(10),
+            "--refs-dir" => refs_dir = it.next().map(PathBuf::from),
             "--help" | "-h" => {
                 print_help();
                 std::process::exit(0);
@@ -170,8 +227,8 @@ fn parse_args() -> Args {
         pending_class,
     );
 
-    if references.is_empty() {
-        eprintln!("no --ref/--ref-id given; nothing to do. Pass --help for usage.");
+    if references.is_empty() && refs_tsv.is_none() {
+        eprintln!("no --ref/--ref-id or --refs-tsv given; nothing to do. Pass --help for usage.");
     }
 
     Args {
@@ -181,6 +238,9 @@ fn parse_args() -> Args {
         base_seed,
         family_filter,
         stats,
+        refs_tsv,
+        per_class,
+        refs_dir,
     }
 }
 
@@ -199,7 +259,13 @@ fn print_help() {
            --seed <u64>        base seed (default 1)\n\
            --family <name>     only emit entries whose family contains <name>\n\
            --stats             print per-entry changed-pixel count + luma/chroma RMSE\n\
-                               vs the reference (works with --manifest-only)\n"
+                               vs the reference (works with --manifest-only)\n\
+         \n\
+         Reference set from the imazen-26 manifest (instead of / besides --ref):\n\
+           --refs-tsv <path>   e.g. ../imazen-26/manifests/train.tsv; picks\n\
+                               --per-class references per content class (default 10)\n\
+                               and downloads them with curl into --refs-dir\n\
+                               (default <out>/references), skipping cached files\n"
     );
 }
 
@@ -227,7 +293,16 @@ fn write_entry_images(
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = parse_args();
+    let mut args = parse_args();
+    if let Some(tsv) = &args.refs_tsv {
+        let refs_dir = args
+            .refs_dir
+            .clone()
+            .unwrap_or_else(|| args.out.join("references"));
+        let mut from_manifest =
+            resolve_manifest_references(tsv, args.per_class, &refs_dir, args.base_seed)?;
+        args.references.append(&mut from_manifest);
+    }
     if args.references.is_empty() {
         return Ok(());
     }
