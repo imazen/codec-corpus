@@ -122,6 +122,20 @@ fn leak_string(s: String) -> &'static str {
     Box::leak(s.into_boxed_str())
 }
 
+/// Why a registry source cannot be fetched on the host it is running on, if
+/// it cannot. `None` means "no known host restriction".
+///
+/// The only entry today is `libjpeg-turbo-fuzz` on Windows: every file in
+/// libjpeg-turbo/seed-corpora's `afl-testcases/` tree carries an AFL-style
+/// name (`id:000109,src:000000,op:havoc,rep:4.bmp`), and NTFS rejects `:` in
+/// file names, so `git sparse-checkout` cannot materialize the tree there.
+pub(crate) fn host_restriction(source: &ResolvedSource) -> Option<&'static str> {
+    if cfg!(windows) && source.cache_key == "libjpeg-turbo-fuzz" {
+        return Some("upstream file names contain ':' (AFL naming), which NTFS cannot represent");
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -119,6 +119,10 @@ pub enum Error {
     /// runtime cannot spawn subprocesses to fetch it. Pre-populate the cache
     /// on the host and point [`Corpus::with_cache_root()`] at the preopened
     /// path instead.
+    ///
+    /// Also returned on Windows for `libjpeg-turbo-fuzz`: the upstream seed
+    /// files carry AFL-style names containing `:`, which NTFS cannot store,
+    /// so no checkout on that host can succeed.
     DownloadUnsupported { dataset: String },
     /// A downloaded file (or bundle) did not match the SHA-256 recorded in
     /// its `.list`. Nothing was placed in the cache.
@@ -574,6 +578,16 @@ impl Corpus {
                 return Ok(full);
             }
             // Fall through to download if subpath doesn't exist
+        }
+
+        // Some sources cannot be materialized on this host at all; say so
+        // instead of attempting a checkout that fails with a misleading
+        // `NetworkUnavailable`.
+        if let Some(reason) = registry::host_restriction(source) {
+            eprintln!("codec-corpus: '{path}' cannot be fetched on this host: {reason}");
+            return Err(Error::DownloadUnsupported {
+                dataset: path.to_string(),
+            });
         }
 
         // Slow path: download

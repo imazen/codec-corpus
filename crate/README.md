@@ -190,6 +190,10 @@ for name in corpus.list_cached() {
 | `libjpeg-turbo-fuzz` | libjpeg-turbo/seed-corpora afl-testcases | git sparse checkout |
 | `image-rs/{subpath}` | image-rs/image {subpath} | git sparse checkout |
 
+`libjpeg-turbo-fuzz` cannot be fetched on Windows: every upstream file has an
+AFL-style name containing `:`, which NTFS rejects. `get()` returns
+`Error::DownloadUnsupported` there instead of attempting the checkout.
+
 ## Datasets (imazen/codec-corpus)
 
 Any top-level folder in the [codec-corpus repo](https://github.com/imazen/codec-corpus) is a valid path. Pass any path into `get()` — the first component determines the download unit.

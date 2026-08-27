@@ -199,7 +199,30 @@ fn download_go_fuzz_corpus_gif() {
 }
 
 // ── libjpeg-turbo fuzz seed corpus (git sparse checkout) ───────────────
+//
+// Every file in the upstream tree has an AFL-style name containing ':',
+// which NTFS rejects, so the checkout is impossible on Windows. There the
+// crate reports `DownloadUnsupported` up front (asserted below, no network
+// needed); elsewhere the real download is exercised.
 
+#[cfg(windows)]
+#[test]
+fn libjpeg_turbo_fuzz_unsupported_on_windows() {
+    let (corpus, tmp) = corpus_in_tmp("ljt-fuzz-win");
+
+    let err = corpus
+        .get("libjpeg-turbo-fuzz")
+        .expect_err("libjpeg-turbo-fuzz must not be fetchable on Windows");
+    assert!(
+        matches!(err, codec_corpus::Error::DownloadUnsupported { ref dataset } if dataset == "libjpeg-turbo-fuzz"),
+        "expected DownloadUnsupported, got {err:?}"
+    );
+    assert!(!corpus.is_cached("libjpeg-turbo-fuzz"));
+
+    cleanup(&tmp);
+}
+
+#[cfg(not(windows))]
 #[test]
 #[ignore]
 fn download_libjpeg_turbo_fuzz() {

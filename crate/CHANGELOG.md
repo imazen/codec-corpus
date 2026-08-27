@@ -22,7 +22,10 @@
 - `libjpeg-turbo-fuzz` now resolves to `libjpeg-turbo/seed-corpora` `afl-testcases`
   (bmp/gif/jpeg/targa seed trees). It previously pointed at
   `libjpeg-turbo/fuzz` `seed_corpus`, a directory that repo never contained, so
-  every `get("libjpeg-turbo-fuzz")` returned `PathNotFound`.
+  every `get("libjpeg-turbo-fuzz")` returned `PathNotFound`. On Windows the
+  entry now returns `Error::DownloadUnsupported` up front: the upstream
+  AFL-style file names contain `:`, which NTFS cannot store, so the checkout
+  cannot succeed there (previously a misleading `NetworkUnavailable`).
 - Doc examples and the `adhoc_github_repo` integration test no longer reference
   `niclas-aspect/jxl-rs`, a repository that does not exist (GitHub 404).
 - `sha256::tests::file_matches_in_memory` no longer aborts the wasm32-wasip1
