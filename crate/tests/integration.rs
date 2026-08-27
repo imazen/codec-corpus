@@ -228,8 +228,8 @@ fn download_libjpeg_turbo_fuzz() {
 fn adhoc_github_repo() {
     let (corpus, tmp) = corpus_in_tmp("adhoc-github");
 
-    // Fetch a small, nested subfolder of a repo we control (a third-party
-    // repo used here previously vanished and turned this test red for months).
+    // Fetch a small, nested subfolder of a repo we control (the third-party
+    // repo used here previously returns GitHub 404, which made this test fail).
     // The nested `repo_path` also exercises cone-mode sparse checkout below
     // the top level.
     let dir = corpus
