@@ -18,6 +18,14 @@
   `#[non_exhaustive]`).
 - New sibling workspace crate [`corruption-corpus`](corruption-corpus/README.md): the deterministic structural-corruption generator for zensim negative-tail validation (#7), landed on `main` from PR #8. It is a separate package — `codec-corpus` itself gains no new dependencies or API.
 
+### Fixed
+- `libjpeg-turbo-fuzz` now resolves to `libjpeg-turbo/seed-corpora` `afl-testcases`
+  (bmp/gif/jpeg/targa seed trees). It previously pointed at
+  `libjpeg-turbo/fuzz` `seed_corpus`, a directory that repo never contained, so
+  every `get("libjpeg-turbo-fuzz")` returned `PathNotFound`.
+- Doc examples and the `adhoc_github_repo` integration test no longer reference
+  `niclas-aspect/jxl-rs`, a repository that does not exist (GitHub 404).
+
 ## [1.1.0] - 2026-04-14
 
 ### Added

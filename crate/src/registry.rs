@@ -56,13 +56,17 @@ pub(crate) fn resolve(path: &str) -> Option<ResolvedSource> {
         });
     }
 
-    // libjpeg-turbo fuzz seed corpus
+    // libjpeg-turbo fuzz seed corpus. The seeds live in
+    // libjpeg-turbo/seed-corpora (afl-testcases/{bmp,gif,gif_im,jpeg,
+    // jpeg_turbo,targa}); OSS-Fuzz's projects/libjpeg-turbo/Dockerfile zips
+    // that tree into the fuzzer seed corpora. The libjpeg-turbo/fuzz repo only
+    // holds branches.txt — it never carried a seed_corpus directory.
     if path == "libjpeg-turbo-fuzz" || path.starts_with("libjpeg-turbo-fuzz/") {
         return Some(ResolvedSource {
             cache_key: "libjpeg-turbo-fuzz".to_string(),
             kind: SourceKind::GitHubSubfolder {
-                repo: "libjpeg-turbo/fuzz",
-                repo_path: "seed_corpus",
+                repo: "libjpeg-turbo/seed-corpora",
+                repo_path: "afl-testcases",
                 branch: Some("main"),
             },
         });
@@ -198,8 +202,8 @@ mod tests {
                 repo_path,
                 branch,
             } => {
-                assert_eq!(*repo, "libjpeg-turbo/fuzz");
-                assert_eq!(*repo_path, "seed_corpus");
+                assert_eq!(*repo, "libjpeg-turbo/seed-corpora");
+                assert_eq!(*repo_path, "afl-testcases");
                 assert_eq!(*branch, Some("main"));
             }
             other => panic!("expected GitHubSubfolder, got {other:?}"),

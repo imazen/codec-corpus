@@ -85,7 +85,7 @@ Fetch from arbitrary locations without needing them in the built-in registry:
 let corpus = codec_corpus::Corpus::new().unwrap();
 
 // Arbitrary GitHub repo subfolder
-let path = corpus.github_repo("niclas-aspect/jxl-rs", "test-data", "main").unwrap();
+let path = corpus.github_repo("libjpeg-turbo/seed-corpora", "afl-testcases/jpeg", "main").unwrap();
 
 // Download and cache a ZIP URL
 let path = corpus.zip_url("custom-corpus", "https://example.com/corpus.zip").unwrap();
@@ -187,7 +187,7 @@ for name in corpus.list_cached() {
 | `go-fuzz-corpus/gif` | dvyukov/go-fuzz-corpus gif/corpus | git sparse checkout |
 | `go-fuzz-corpus/png` | dvyukov/go-fuzz-corpus png/corpus | git sparse checkout |
 | `go-fuzz-corpus/jpeg` | dvyukov/go-fuzz-corpus jpeg/corpus | git sparse checkout |
-| `libjpeg-turbo-fuzz` | libjpeg-turbo/fuzz seed_corpus | git sparse checkout |
+| `libjpeg-turbo-fuzz` | libjpeg-turbo/seed-corpora afl-testcases | git sparse checkout |
 | `image-rs/{subpath}` | image-rs/image {subpath} | git sparse checkout |
 
 ## Datasets (imazen/codec-corpus)

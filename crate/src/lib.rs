@@ -40,7 +40,7 @@
 //! let corpus = codec_corpus::Corpus::new().unwrap();
 //!
 //! // Arbitrary GitHub repo subfolder
-//! let path = corpus.github_repo("niclas-aspect/jxl-rs", "test-data", "main").unwrap();
+//! let path = corpus.github_repo("libjpeg-turbo/seed-corpora", "afl-testcases/jpeg", "main").unwrap();
 //!
 //! // Arbitrary ZIP URL
 //! let path = corpus.zip_url("my-corpus", "https://example.com/corpus.zip").unwrap();
@@ -334,7 +334,7 @@ impl Corpus {
     ///
     /// ```no_run
     /// let corpus = codec_corpus::Corpus::new()?;
-    /// let path = corpus.github_repo("niclas-aspect/jxl-rs", "test-data", "main")?;
+    /// let path = corpus.github_repo("libjpeg-turbo/seed-corpora", "afl-testcases/jpeg", "main")?;
     /// # Ok::<(), codec_corpus::Error>(())
     /// ```
     pub fn github_repo(

@@ -228,14 +228,20 @@ fn download_libjpeg_turbo_fuzz() {
 fn adhoc_github_repo() {
     let (corpus, tmp) = corpus_in_tmp("adhoc-github");
 
-    // Fetch a known small GitHub repo subfolder
+    // Fetch a small, nested subfolder of a repo we control (a third-party
+    // repo used here previously vanished and turned this test red for months).
+    // The nested `repo_path` also exercises cone-mode sparse checkout below
+    // the top level.
     let dir = corpus
-        .github_repo("niclas-aspect/jxl-rs", "test-data", "main")
+        .github_repo("imazen/codec-corpus", "farbfeld-conformance/valid", "main")
         .expect("download failed");
     assert!(dir.is_dir(), "expected directory at {}", dir.display());
 
     let count = std::fs::read_dir(&dir).unwrap().count();
-    assert!(count > 0, "expected files in jxl-rs/test-data, got {count}");
+    assert!(
+        count > 0,
+        "expected files in codec-corpus/farbfeld-conformance/valid, got {count}"
+    );
 
     // list_cached should include it under third-party/
     let cached = corpus.list_cached();
