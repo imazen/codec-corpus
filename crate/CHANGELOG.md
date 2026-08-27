@@ -25,6 +25,9 @@
   every `get("libjpeg-turbo-fuzz")` returned `PathNotFound`.
 - Doc examples and the `adhoc_github_repo` integration test no longer reference
   `niclas-aspect/jxl-rs`, a repository that does not exist (GitHub 404).
+- `sha256::tests::file_matches_in_memory` no longer aborts the wasm32-wasip1
+  unit-test run (`std::env::temp_dir()` panics on WASI); it writes under
+  `target/` there, which CI preopens.
 
 ## [1.1.0] - 2026-04-14
 

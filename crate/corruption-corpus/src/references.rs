@@ -195,14 +195,15 @@ pub fn select_per_class(
 mod tests {
     use super::*;
 
-    const MANIFEST: &str = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../imazen-26/manifests/train.tsv"
-    );
-
-    fn checked_in_manifest() -> String {
-        std::fs::read_to_string(MANIFEST)
-            .unwrap_or_else(|e| panic!("checked-in manifest {MANIFEST} must be readable: {e}"))
+    /// The repo's `imazen-26/manifests/train.tsv`, embedded at compile time
+    /// (test builds only) so the test is hermetic on every target — the
+    /// wasm32-wasip1 CI job runs under `wasmtime --dir .` with only the
+    /// package root preopened, where a host-absolute path is not readable.
+    fn checked_in_manifest() -> &'static str {
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../imazen-26/manifests/train.tsv"
+        ))
     }
 
     /// Every category in the repo's manifest is either folded into a class
@@ -239,7 +240,7 @@ mod tests {
     /// from the checked-in manifest, deterministically.
     #[test]
     fn at_least_ten_references_per_class_from_train_manifest() {
-        let entries = parse_imazen26_manifest(&checked_in_manifest()).unwrap();
+        let entries = parse_imazen26_manifest(checked_in_manifest()).unwrap();
         assert!(entries.len() > 1000, "got {}", entries.len());
         assert!(entries.iter().all(|e| e.url.starts_with("https://")));
         assert!(

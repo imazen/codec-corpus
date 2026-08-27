@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Fixed
+- The `references` unit tests embed `imazen-26/manifests/train.tsv` at compile
+  time instead of reading it from a host-absolute path, so they pass under the
+  wasm32-wasip1 CI job (`wasmtime --dir .` preopens only the package root).
 - `block_repeat_neighbor` was an exact identity for a whole-image region (the
   "above" neighbor wrapped onto the pixel's own row) and a no-op inside flat
   regions. It now copies the adjacent same-size block (left, else right, else

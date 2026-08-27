@@ -225,9 +225,24 @@ mod tests {
         );
     }
 
+    /// Scratch directory for the file test. `std::env::temp_dir()` panics on
+    /// wasm32-wasip1 (no `TMPDIR` concept); there, cargo runs the test binary
+    /// from the package root, which CI preopens via `wasmtime --dir .`, so a
+    /// path under `target/` is the writable location.
+    fn scratch_dir() -> std::path::PathBuf {
+        #[cfg(target_arch = "wasm32")]
+        {
+            std::path::PathBuf::from("target").join("wasm-test-scratch")
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            std::env::temp_dir()
+        }
+    }
+
     #[test]
     fn file_matches_in_memory() {
-        let dir = std::env::temp_dir().join("codec-corpus-sha256-file-test");
+        let dir = scratch_dir().join("codec-corpus-sha256-file-test");
         let _ = std::fs::create_dir_all(&dir);
         let p = dir.join("blob.bin");
         let data: Vec<u8> = (0..200_000u32).map(|i| (i % 253) as u8).collect();
