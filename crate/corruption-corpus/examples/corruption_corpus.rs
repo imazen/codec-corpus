@@ -27,7 +27,9 @@
 
 use std::path::{Path, PathBuf};
 
-use corruption_corpus::{ContentClass, ManifestEntry, driver, manifest_for_reference};
+use corruption_corpus::{
+    ContentClass, ManifestEntry, driver, manifest_for_image, manifest_for_reference,
+};
 
 struct Args {
     references: Vec<(PathBuf, String, ContentClass)>,
@@ -36,6 +38,57 @@ struct Args {
     base_seed: u64,
     /// If set, only emit entries whose family name matches (substring).
     family_filter: Option<String>,
+    /// Print per-entry error stats vs the reference (changed pixels, luma /
+    /// chroma RMSE) — the measurement used to diagnose imazen/codec-corpus#9.
+    stats: bool,
+}
+
+/// Per-entry error of a corruption vs its reference, BT.601 YCbCr.
+struct EntryStats {
+    changed_pixels: u64,
+    luma_rmse: f64,
+    chroma_rmse: f64,
+    max_abs: u8,
+}
+
+fn entry_stats(
+    reference: &corruption_corpus::Rgb8,
+    corrupted: &corruption_corpus::Rgb8,
+) -> EntryStats {
+    let (w, h) = (reference.width(), reference.height());
+    let (mut changed, mut luma_sq, mut chroma_sq, mut max_abs) = (0u64, 0f64, 0f64, 0u8);
+    for y in 0..h {
+        for x in 0..w {
+            let a = reference.get(x, y);
+            let b = corrupted.get(x, y);
+            if a != b {
+                changed += 1;
+            }
+            for c in 0..3 {
+                max_abs = max_abs.max(a[c].abs_diff(b[c]));
+            }
+            let (ya, cba, cra) = ycbcr(a);
+            let (yb, cbb, crb) = ycbcr(b);
+            luma_sq += (ya - yb).powi(2);
+            chroma_sq += ((cba - cbb).powi(2) + (cra - crb).powi(2)) / 2.0;
+        }
+    }
+    let n = (w as f64 * h as f64).max(1.0);
+    EntryStats {
+        changed_pixels: changed,
+        luma_rmse: (luma_sq / n).sqrt(),
+        chroma_rmse: (chroma_sq / n).sqrt(),
+        max_abs,
+    }
+}
+
+fn ycbcr(p: [u8; 3]) -> (f64, f64, f64) {
+    let (r, g, b) = (p[0] as f64, p[1] as f64, p[2] as f64);
+    (
+        0.299 * r + 0.587 * g + 0.114 * b,
+        128.0 - 0.168_736 * r - 0.331_264 * g + 0.5 * b,
+        128.0 + 0.5 * r - 0.418_688 * g - 0.081_312 * b,
+    )
 }
 
 fn parse_class(s: &str) -> ContentClass {
@@ -58,6 +111,7 @@ fn parse_args() -> Args {
     let mut manifest_only = false;
     let mut base_seed = 1u64;
     let mut family_filter = None;
+    let mut stats = false;
 
     // A reference is described by a `--ref` followed (in any order) by its
     // `--ref-id` and `--class`. We accumulate the in-progress reference and
@@ -100,6 +154,7 @@ fn parse_args() -> Args {
             "--manifest-only" => manifest_only = true,
             "--seed" => base_seed = it.next().and_then(|s| s.parse().ok()).unwrap_or(1),
             "--family" => family_filter = it.next(),
+            "--stats" => stats = true,
             "--help" | "-h" => {
                 print_help();
                 std::process::exit(0);
@@ -125,6 +180,7 @@ fn parse_args() -> Args {
         manifest_only,
         base_seed,
         family_filter,
+        stats,
     }
 }
 
@@ -141,7 +197,9 @@ fn print_help() {
            --out <dir>         output dir (default: corruption-out/)\n\
            --manifest-only     write _MANIFEST.json only, no image bytes\n\
            --seed <u64>        base seed (default 1)\n\
-           --family <name>     only emit entries whose family contains <name>\n"
+           --family <name>     only emit entries whose family contains <name>\n\
+           --stats             print per-entry changed-pixel count + luma/chroma RMSE\n\
+                               vs the reference (works with --manifest-only)\n"
     );
 }
 
@@ -189,9 +247,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         ref_count += 1;
 
-        let mut entries = manifest_for_reference(ref_id, *class, args.base_seed);
+        // Content-aware: entries that change zero pixels of *this* reference
+        // (e.g. chroma_boundary on achromatic text) are dropped rather than
+        // shipped as un-catchable "defects" (imazen/codec-corpus#9).
+        let catalog_len = manifest_for_reference(ref_id, *class, args.base_seed).len();
+        let mut entries = manifest_for_image(ref_id, *class, args.base_seed, &reference);
+        let dropped_identity = catalog_len - entries.len();
         if let Some(filter) = &args.family_filter {
             entries.retain(|e| e.params.family.slug().contains(filter.as_str()));
+        }
+
+        if args.stats {
+            println!("ref_id\tslug\tchanged_px\tluma_rmse\tchroma_rmse\tmax_abs");
+            for entry in &entries {
+                let mut corrupted = reference.clone();
+                entry.params.apply(&mut corrupted, entry.seed);
+                let s = entry_stats(&reference, &corrupted);
+                println!(
+                    "{ref_id}\t{}\t{}\t{:.3}\t{:.3}\t{}",
+                    entry.params.slug(),
+                    s.changed_pixels,
+                    s.luma_rmse,
+                    s.chroma_rmse,
+                    s.max_abs
+                );
+            }
         }
 
         if !args.manifest_only {
@@ -210,7 +290,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         println!(
-            "{ref_id}: {} entries ({}x{})",
+            "{ref_id}: {} entries ({}x{}); {dropped_identity} identity entries dropped",
             entries.len(),
             reference.width(),
             reference.height()

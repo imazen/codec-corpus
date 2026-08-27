@@ -322,6 +322,21 @@ impl CorruptionParams {
         self.family.apply(img, self.region, self.severity, &mut rng);
     }
 
+    /// Whether applying this corruption to `reference` with `seed` leaves every
+    /// pixel unchanged.
+    ///
+    /// Some families have nothing to act on for some content — a chroma
+    /// defect on achromatic text, a repeated-neighbor block inside a flat
+    /// region. Such an entry is not a defect at all and no metric can detect
+    /// it; shipping it in a manifest only depresses measured detection rates
+    /// (imazen/codec-corpus#9). Use this (or [`manifest_for_image`]) to drop
+    /// them before scoring.
+    pub fn is_identity_on(&self, reference: &Rgb8, seed: u64) -> bool {
+        let mut img = reference.clone();
+        self.apply(&mut img, seed);
+        img == *reference
+    }
+
     /// Whether, for an honest metric, this corruption is egregious enough that
     /// the *calibrated* score is expected to go negative (vs merely ranking
     /// below the lq anchor). Large opaque region + a structure-destroying family.
@@ -587,6 +602,27 @@ pub fn manifest_for_reference(
         .collect()
 }
 
+/// Build manifest entries for one reference like [`manifest_for_reference`],
+/// but drop every entry that is an identity on *this particular* reference
+/// image (see [`CorruptionParams::is_identity_on`]).
+///
+/// The result is content-dependent — a screenshot of gray text loses its
+/// `chroma_boundary` entries, a flat gradient loses its localized
+/// `block_repeat_neighbor` entries — but still fully reproducible from
+/// `(ref_id, base_seed, reference)`. The driver example uses this so a
+/// `_MANIFEST.json` never lists a "defect" that changes zero pixels.
+pub fn manifest_for_image(
+    ref_id: &str,
+    content_class: ContentClass,
+    base_seed: u64,
+    reference: &Rgb8,
+) -> Vec<ManifestEntry> {
+    manifest_for_reference(ref_id, content_class, base_seed)
+        .into_iter()
+        .filter(|e| !e.params.is_identity_on(reference, e.seed))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -723,6 +759,63 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn manifest_for_image_drops_identity_entries() {
+        // imazen/codec-corpus#9: flat achromatic content gives chroma_boundary
+        // nothing to act on; those entries must not ship as "defects".
+        let flat = Rgb8::filled(64, 64, [128, 128, 128]);
+        let full = manifest_for_reference("flat/gray", ContentClass::Gradient, 1);
+        let kept = manifest_for_image("flat/gray", ContentClass::Gradient, 1, &flat);
+        assert!(kept.len() < full.len());
+        assert!(!kept.is_empty());
+        for e in &kept {
+            assert!(
+                !e.params.is_identity_on(&flat, e.seed),
+                "{} is an identity but was kept",
+                e.params.slug()
+            );
+        }
+        assert!(
+            !kept.iter().any(|e| e.family_name == "chroma_boundary"),
+            "chroma_boundary cannot change achromatic content"
+        );
+        assert!(
+            !kept
+                .iter()
+                .any(|e| e.params.family == Family::Block(BlockOp::RepeatNeighbor)),
+            "repeat_neighbor on flat content is an identity"
+        );
+        // Families with something to act on stay.
+        assert!(
+            kept.iter()
+                .any(|e| e.params.family == Family::Block(BlockOp::Zero))
+        );
+
+        // On chromatic, textured content the same entries are real defects
+        // and are kept (the manifest is content-dependent, not family-blind).
+        let mut textured = Rgb8::filled(64, 64, [0, 0, 0]);
+        for y in 0..64 {
+            for x in 0..64 {
+                let k = x / 8 + (y / 8) * 8;
+                textured.set(
+                    x,
+                    y,
+                    [
+                        (k * 29 % 256) as u8,
+                        (k * 67 % 256) as u8,
+                        (k * 13 % 256) as u8,
+                    ],
+                );
+            }
+        }
+        let kept_tex = manifest_for_image("tex", ContentClass::Photo, 1, &textured);
+        assert!(kept_tex.iter().any(|e| e.family_name == "chroma_boundary"));
+        assert!(kept_tex.iter().any(
+            |e| e.params.family == Family::Block(BlockOp::RepeatNeighbor)
+                && e.params.region == Region::Whole
+        ));
     }
 
     #[test]

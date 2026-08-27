@@ -64,6 +64,10 @@ params.apply(&mut img, /* seed */ 1);
 
 `catalog()` expands every family × region × severity; `manifest_for_reference()`
 builds the `ManifestEntry` list (with per-entry seeds) for one reference.
+`manifest_for_image()` does the same but drops entries that change zero pixels
+of the given reference (`CorruptionParams::is_identity_on()`) — a chroma defect
+on achromatic text, a repeated-neighbor block inside a flat region — so no
+manifest ships an un-catchable "defect".
 
 ## The `driver` feature
 

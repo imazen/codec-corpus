@@ -350,16 +350,12 @@ fn apply_block(img: &mut Rgb8, rect: Rect, op: BlockOp, opacity: f32, rng: &mut 
             });
         }
         BlockOp::RepeatNeighbor => {
-            // Copy the neighbor block to the left (or above at the left edge).
-            let (dx, dy) = if rect.x0 >= rect.w && rect.w > 0 {
-                (-(rect.w as i32), 0)
-            } else {
-                (0, -(rect.h as i32))
-            };
+            // Copy the adjacent block of the same size (see
+            // `repeat_neighbor_source`). Read the whole source first so the
+            // copy never reads pixels it has already overwritten.
             let mut src = Vec::new();
             rect.for_each_pixel(w, h, |x, y| {
-                let sx = (x as i32 + dx).rem_euclid(w as i32) as u32;
-                let sy = (y as i32 + dy).rem_euclid(h as i32) as u32;
+                let (sx, sy) = repeat_neighbor_source(rect, w, h, x, y);
                 src.push(img.get(sx, sy));
             });
             let mut i = 0;
@@ -369,6 +365,38 @@ fn apply_block(img: &mut Rgb8, rect: Rect, op: BlockOp, opacity: f32, rng: &mut 
                 i += 1;
             });
         }
+    }
+}
+
+/// Source pixel for `BlockOp::RepeatNeighbor` at `(x, y)` inside `rect`.
+///
+/// The neighbor is the adjacent block of the same size: to the left when
+/// there is room for one, else to the right; failing that, above, else below
+/// (wrapping at the image edge). When the rect spans the whole image on both
+/// axes there is no neighbor block at all, so the op models a decoder stuck
+/// re-emitting the first MCU of each row: every 8-px column band repeats the
+/// first band.
+///
+/// The previous version always picked "above" for a whole-image rect, which
+/// resolved to `(y - H).rem_euclid(H) == y` — an exact identity
+/// (imazen/codec-corpus#9).
+fn repeat_neighbor_source(rect: Rect, w: u32, h: u32, x: u32, y: u32) -> (u32, u32) {
+    if rect.w < w {
+        let dx = if rect.x0 >= rect.w {
+            -(rect.w as i32)
+        } else {
+            rect.w as i32
+        };
+        ((x as i32 + dx).rem_euclid(w as i32) as u32, y)
+    } else if rect.h < h {
+        let dy = if rect.y0 >= rect.h {
+            -(rect.h as i32)
+        } else {
+            rect.h as i32
+        };
+        (x, (y as i32 + dy).rem_euclid(h as i32) as u32)
+    } else {
+        (x % 8, y)
     }
 }
 
@@ -602,33 +630,61 @@ fn apply_overlay(img: &mut Rgb8, rect: Rect, shape: OverlayShape, opacity: f32) 
 // Family 7: chroma-boundary mismatch
 // ---------------------------------------------------------------------------
 
-/// Approximate a wrong-phase chroma upsample: derive luma + chroma, then
-/// reconstruct chroma sampled with a half-pixel phase error at 8x8 block edges.
-/// The error is confined to columns/rows straddling block boundaries.
+/// Model a chroma upsampler that mishandles 8x8 block boundaries: in the
+/// 1-px bands on either side of every block edge — **columns and rows** — a
+/// pixel keeps its own luma but takes the chroma of the same position in the
+/// adjacent block, one full block (8 px) across the boundary. This is the
+/// wrong-block / edge-replicated chroma a decoder produces when it reuses the
+/// previous MCU's chroma row instead of interpolating into the next one (the
+/// zenjpeg `bd0f8d7` bottom-boundary bug is exactly this on the row axis).
+///
+/// The previous version only touched column bands and took chroma from the
+/// 1-px neighbor, which is an identity wherever chroma varies slowly — i.e.
+/// on essentially all real content — and was measured at zero changed pixels
+/// for every localized region (imazen/codec-corpus#9). Chroma is still a
+/// no-op on achromatic content by nature; use
+/// [`CorruptionParams::is_identity_on`](super::CorruptionParams::is_identity_on)
+/// / [`manifest_for_image`](super::manifest_for_image) to drop such entries.
 fn apply_chroma_boundary(img: &mut Rgb8, rect: Rect, opacity: f32) {
     let (w, h) = (img.width(), img.height());
     let snapshot = img.clone();
     rect.for_each_pixel(w, h, |x, y| {
-        // Only corrupt pixels straddling an 8px block boundary (where chroma
-        // upsampling phase errors live).
-        let near_boundary = (x % 8 == 0) || (x % 8 == 7);
-        if !near_boundary {
+        let sx = across_block_boundary(x, w);
+        let sy = across_block_boundary(y, h);
+        if sx == x && sy == y {
             return;
         }
-        // Sample chroma from the neighbor across the boundary (wrong phase).
-        let nx = if x % 8 == 0 {
-            x.saturating_sub(1)
-        } else {
-            (x + 1).min(w - 1)
-        };
         let here = snapshot.get(x, y);
-        let neigh = snapshot.get(nx, y);
-        // Keep this pixel's luma, take the neighbor's chroma (BT.601-ish).
+        let neigh = snapshot.get(sx, sy);
+        // Keep this pixel's luma, take the neighbor block's chroma (BT.601).
         let (yl, _, _) = rgb_to_ycbcr(here);
         let (_, cb, cr) = rgb_to_ycbcr(neigh);
         let c = ycbcr_to_rgb(yl, cb, cr);
         img.set(x, y, blend(here, c, opacity));
     });
+}
+
+/// For a coordinate in an 8-px block-boundary band (`v % 8` is 0 or 7), the
+/// same position in the block across that boundary (8 px away, mirrored when
+/// that would leave the image); otherwise `v` itself.
+fn across_block_boundary(v: u32, len: u32) -> u32 {
+    match v % 8 {
+        0 => {
+            if v >= 8 {
+                v - 8
+            } else {
+                (v + 8).min(len.saturating_sub(1))
+            }
+        }
+        7 => {
+            if v + 8 < len {
+                v + 8
+            } else {
+                v.saturating_sub(8)
+            }
+        }
+        _ => v,
+    }
 }
 
 fn rgb_to_ycbcr(p: [u8; 3]) -> (f32, f32, f32) {
@@ -893,5 +949,198 @@ mod tests {
         let mut rng = SplitMix64::new(0);
         Family::Block(BlockOp::Zero).apply(&mut img, Region::Whole, Severity::Opaque, &mut rng);
         assert_eq!(img.get(8, 8), [0, 0, 0]);
+    }
+
+    // -----------------------------------------------------------------------
+    // Regression tests for imazen/codec-corpus#9: chroma_boundary and
+    // block_repeat_neighbor must not be identities on content that has
+    // something for them to act on.
+    // -----------------------------------------------------------------------
+
+    /// Number of pixels that differ between two same-sized images.
+    fn changed_pixels(a: &Rgb8, b: &Rgb8) -> usize {
+        let mut n = 0;
+        for y in 0..a.height() {
+            for x in 0..a.width() {
+                if a.get(x, y) != b.get(x, y) {
+                    n += 1;
+                }
+            }
+        }
+        n
+    }
+
+    /// Every 8x8 block has its own distinct, saturated color.
+    fn block_colored(w: u32, h: u32) -> Rgb8 {
+        let mut img = Rgb8::filled(w, h, [0, 0, 0]);
+        for y in 0..h {
+            for x in 0..w {
+                let (bx, by) = (x / 8, y / 8);
+                let k = bx + by * w.div_ceil(8);
+                img.set(
+                    x,
+                    y,
+                    [
+                        (40 + (k * 37) % 200) as u8,
+                        (30 + (k * 91) % 200) as u8,
+                        (20 + (k * 53) % 200) as u8,
+                    ],
+                );
+            }
+        }
+        img
+    }
+
+    /// Horizontal stripes 8 px tall, each a distinct color; constant along x.
+    /// Chroma changes only across rows, so any op that samples horizontal
+    /// neighbors only is an identity here.
+    fn hstripes(w: u32, h: u32) -> Rgb8 {
+        let mut img = Rgb8::filled(w, h, [0, 0, 0]);
+        for y in 0..h {
+            let band = y / 8;
+            let c = [
+                200,
+                (40 + (band % 5) * 30) as u8,
+                (60 + (band % 3) * 40) as u8,
+            ];
+            for x in 0..w {
+                img.set(x, y, c);
+            }
+        }
+        img
+    }
+
+    #[test]
+    fn block_repeat_neighbor_whole_image_is_not_identity() {
+        // Issue #9: a whole-image rect took the `above` branch, which wrapped
+        // to the pixel's own row — zero changed pixels on every image.
+        let orig = block_colored(64, 64);
+        let mut img = orig.clone();
+        let mut rng = SplitMix64::new(5);
+        Family::Block(BlockOp::RepeatNeighbor).apply(
+            &mut img,
+            Region::Whole,
+            Severity::Opaque,
+            &mut rng,
+        );
+        let changed = changed_pixels(&orig, &img);
+        assert!(
+            changed >= 64 * 64 / 2,
+            "whole-image repeat_neighbor changed only {changed} of {} pixels",
+            64 * 64
+        );
+        // Every 8-px column band now repeats the first band of its row.
+        for y in 0..64 {
+            for x in 0..64 {
+                assert_eq!(img.get(x, y), orig.get(x % 8, y), "at ({x},{y})");
+            }
+        }
+    }
+
+    #[test]
+    fn block_repeat_neighbor_copies_the_adjacent_block() {
+        let orig = block_colored(64, 64);
+        for seed in 0..16u64 {
+            for region in [Region::Square(8), Region::Square(16), Region::Fraction(2)] {
+                let mut img = orig.clone();
+                let mut rng = SplitMix64::new(seed);
+                Family::Block(BlockOp::RepeatNeighbor).apply(
+                    &mut img,
+                    region,
+                    Severity::Opaque,
+                    &mut rng,
+                );
+                // `resolve` is the first RNG draw inside `apply`, so replaying
+                // it from the same seed yields the rect that was corrupted.
+                let rect = region.resolve(64, 64, &mut SplitMix64::new(seed));
+                let mut changed = 0;
+                rect.for_each_pixel(64, 64, |x, y| {
+                    let (sx, sy) = repeat_neighbor_source(rect, 64, 64, x, y);
+                    assert_ne!((sx, sy), (x, y), "source must be a different pixel");
+                    assert_eq!(img.get(x, y), orig.get(sx, sy), "at ({x},{y})");
+                    if img.get(x, y) != orig.get(x, y) {
+                        changed += 1;
+                    }
+                });
+                assert!(
+                    changed > 0,
+                    "{region:?} seed {seed}: repeat_neighbor changed no pixels"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn chroma_boundary_is_visible_when_chroma_varies_only_across_rows() {
+        // Issue #9: the old op only sampled the 1-px horizontal neighbor, so
+        // content whose chroma varies across rows (or slowly in every
+        // direction) came back unchanged at every localized region size.
+        let orig = hstripes(64, 64);
+        for region in [
+            Region::Whole,
+            Region::Fraction(4),
+            Region::Square(64),
+            Region::Square(16),
+            Region::Square(8),
+        ] {
+            for seed in 0..8u64 {
+                let mut img = orig.clone();
+                let mut rng = SplitMix64::new(seed);
+                Family::ChromaBoundary.apply(&mut img, region, Severity::Opaque, &mut rng);
+                let changed = changed_pixels(&orig, &img);
+                assert!(
+                    changed > 0,
+                    "{region:?} seed {seed}: chroma_boundary changed no pixels"
+                );
+                // Luma is preserved (it is a chroma-only defect) wherever the
+                // foreign chroma did not push a channel into 0/255 clipping.
+                for y in 0..64 {
+                    for x in 0..64 {
+                        let p = img.get(x, y);
+                        if p.iter().any(|&c| c == 0 || c == 255) {
+                            continue;
+                        }
+                        let (ya, _, _) = rgb_to_ycbcr(orig.get(x, y));
+                        let (yb, _, _) = rgb_to_ycbcr(p);
+                        assert!((ya - yb).abs() <= 2.5, "luma drift at ({x},{y})");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn chroma_boundary_only_touches_block_edge_bands() {
+        let orig = block_colored(64, 64);
+        let mut img = orig.clone();
+        let mut rng = SplitMix64::new(1);
+        Family::ChromaBoundary.apply(&mut img, Region::Whole, Severity::Opaque, &mut rng);
+        for y in 0..64 {
+            for x in 0..64 {
+                let on_band = matches!(x % 8, 0 | 7) || matches!(y % 8, 0 | 7);
+                if !on_band {
+                    assert_eq!(img.get(x, y), orig.get(x, y), "interior ({x},{y})");
+                }
+            }
+        }
+        assert!(changed_pixels(&orig, &img) > 0);
+    }
+
+    #[test]
+    fn across_block_boundary_maps_into_the_adjacent_block() {
+        assert_eq!(across_block_boundary(8, 64), 0);
+        assert_eq!(across_block_boundary(16, 64), 8);
+        assert_eq!(across_block_boundary(7, 64), 15);
+        assert_eq!(across_block_boundary(15, 64), 23);
+        // Interior columns are untouched.
+        for v in 1..7 {
+            assert_eq!(across_block_boundary(v, 64), v);
+        }
+        // Edges mirror inward instead of leaving the image.
+        assert_eq!(across_block_boundary(0, 64), 8);
+        assert_eq!(across_block_boundary(63, 64), 55);
+        // Tiny images stay in bounds.
+        assert_eq!(across_block_boundary(0, 1), 0);
+        assert_eq!(across_block_boundary(0, 4), 3);
     }
 }

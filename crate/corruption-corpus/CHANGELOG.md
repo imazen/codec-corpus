@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Fixed
+- `block_repeat_neighbor` was an exact identity for a whole-image region (the
+  "above" neighbor wrapped onto the pixel's own row) and a no-op inside flat
+  regions. It now copies the adjacent same-size block (left, else right, else
+  above, else below) and, for a whole-image region, repeats the first 8-px
+  column band of each row (a decoder stuck re-emitting one MCU). (#9)
+- `chroma_boundary` only sampled the 1-px horizontal neighbor's chroma, an
+  identity wherever chroma varies slowly — measured at zero changed pixels for
+  every localized region on real content. It now acts on both row and column
+  block-boundary bands and takes chroma from one full block (8 px) across the
+  boundary, keeping luma. (#9)
+- New `CorruptionParams::is_identity_on()` and `manifest_for_image()` drop
+  entries that change zero pixels of a given reference (e.g. any chroma defect
+  on achromatic content), so a `_MANIFEST.json` never lists an un-catchable
+  "defect". The `corruption_corpus` example uses it and reports the count. (#9)
+
 ### Added
 - **Initial crate**, landed on `main` as a workspace member of the
   `codec-corpus` repo (from PR #8), kept separate from the corpus *fetcher* so
