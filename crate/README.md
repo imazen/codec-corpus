@@ -257,6 +257,16 @@ let err = corpus.get("not-yet-cached").unwrap_err();
 
 Calling `get()` for an uncached dataset on WASM returns `Error::DownloadUnsupported` (not `NetworkUnavailable`). This is intentional — downloads must happen host-side.
 
+## Structural-corruption corpus
+
+The structural-corruption *generator* — a held-out falsification set for a
+perceptual metric's negative tail (channel swaps, dropped blocks, off-by-one
+edges, and seven more deterministic distortion families) — lives in the sibling
+**[`corruption-corpus`](corruption-corpus/)** workspace crate, decoupled from
+this fetcher. See its [README](corruption-corpus/README.md) for the family
+catalog, the `score(corruption) < score(q20-anchor)` gate, and the
+`corruption_corpus` generator example.
+
 ## Dependencies
 
 Four Rust crates, all small:

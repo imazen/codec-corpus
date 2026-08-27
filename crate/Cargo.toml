@@ -1,4 +1,5 @@
 [workspace]
+members = ["corruption-corpus"]
 
 [package]
 name = "codec-corpus"
