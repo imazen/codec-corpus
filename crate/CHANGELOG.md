@@ -3,6 +3,19 @@
 ## [Unreleased]
 
 ### Added
+- **`R2Corpus`** (#2, phase 1 — anonymous pull): path-keyed sync of a public
+  R2/HTTP prefix into the cache. Fetches the auto-generated `<prefix>.list`
+  (`ListIndex`: `{path: {size, sha256, in_bundle}}` + optional `BundleInfo`),
+  diffs the local cache by size + SHA-256, takes the `.tar`/`.tar.gz`/`.tar.zst`
+  bundle when ≥40 % of its files are missing (`PullMode::Auto`; also
+  `ForceBundle` / `NoBundle` / `Offline`), fetches the rest individually, verifies
+  every file before it lands, and prunes unlisted files. Same `curl`/`wget`/
+  `powershell` + system `tar` shell-outs as `Corpus`; SHA-256 is implemented
+  in-crate (FIPS 180-4 vectors tested) so no new dependencies. `ListIndex::from_dir`
+  builds the index a push tool uploads. `DEFAULT_R2_BASE_URL` points at the
+  public `codec-corpus.r2.imazen.org` bucket.
+- `Error::ChecksumMismatch` and `Error::ListParse` (additive; `Error` is
+  `#[non_exhaustive]`).
 - New sibling workspace crate [`corruption-corpus`](corruption-corpus/README.md): the deterministic structural-corruption generator for zensim negative-tail validation (#7), landed on `main` from PR #8. It is a separate package — `codec-corpus` itself gains no new dependencies or API.
 
 ## [1.1.0] - 2026-04-14

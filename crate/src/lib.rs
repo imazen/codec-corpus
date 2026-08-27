@@ -52,10 +52,32 @@
 //! let path = corpus.local_path("/home/user/my-images").unwrap();
 //! ```
 
+//! ## Public R2 prefixes (`R2Corpus`)
+//!
+//! Continuously-growing corpora (fuzz seeds, CI fixtures) live in a public
+//! R2 bucket, indexed by an auto-generated `.list` per prefix and pulled
+//! anonymously — see [`R2Corpus`] and the [`r2`] module docs.
+//!
+//! ```no_run
+//! let seeds = codec_corpus::R2Corpus::pull(
+//!     codec_corpus::DEFAULT_R2_BASE_URL,
+//!     "fuzz/zentiff/fuzz_decode/",
+//! )?;
+//! for entry in std::fs::read_dir(seeds.path())? { /* ... */ }
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+
 #![forbid(unsafe_code)]
 
 mod download;
+pub mod r2;
 mod registry;
+mod sha256;
+
+pub use r2::{
+    BundleInfo, DEFAULT_R2_BASE_URL, FileEntry, LIST_VERSION, ListIndex, PullMode, PullOptions,
+    R2Corpus,
+};
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -98,6 +120,18 @@ pub enum Error {
     /// on the host and point [`Corpus::with_cache_root()`] at the preopened
     /// path instead.
     DownloadUnsupported { dataset: String },
+    /// A downloaded file (or bundle) did not match the SHA-256 recorded in
+    /// its `.list`. Nothing was placed in the cache.
+    ChecksumMismatch {
+        /// Relative path (or bundle key) of the offending object.
+        path: String,
+        /// SHA-256 the `.list` promised.
+        expected: String,
+        /// SHA-256 actually downloaded.
+        actual: String,
+    },
+    /// A `.list` index (or a prefix / path inside one) was malformed or unsafe.
+    ListParse(String),
 }
 
 impl std::fmt::Display for Error {
@@ -124,6 +158,17 @@ impl std::fmt::Display for Error {
                      dataset '{dataset}' must be pre-cached on the host"
                 )
             }
+            Error::ChecksumMismatch {
+                path,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "checksum mismatch for '{path}': .list says sha256 {expected}, got {actual}"
+                )
+            }
+            Error::ListParse(msg) => write!(f, "invalid .list index: {msg}"),
         }
     }
 }

@@ -97,6 +97,52 @@ let path = corpus.tar_url("my-corpus", "https://example.com/corpus.tar.gz").unwr
 let path = corpus.local_path("/home/user/my-images").unwrap();
 ```
 
+### Public R2 prefixes (`R2Corpus`)
+
+Continuously-growing corpora — fuzz seeds, CI-generated fixtures — are too large
+and too churny for GitHub releases. They live in a **public-read R2 bucket**
+(`https://codec-corpus.r2.imazen.org`), one auto-generated `.list` index per
+prefix, and are pulled anonymously with the same `curl`/`wget`/`powershell`
+chain as everything else. Path-keyed, not hash-keyed: you get a directory that
+mirrors the remote prefix and walk it with `std::fs`.
+
+```rust
+use codec_corpus::{R2Corpus, DEFAULT_R2_BASE_URL};
+
+let seeds = R2Corpus::pull(DEFAULT_R2_BASE_URL, "fuzz/zentiff/fuzz_decode/")?;
+for entry in std::fs::read_dir(seeds.path())? {
+    let bytes = std::fs::read(entry?.path())?;
+    // feed your decoder / fuzzer...
+}
+```
+
+How a pull works: fetch `<prefix>.list` (one small request) → diff the local
+cache by size + SHA-256 → if the prefix has a frozen `.tar`/`.tar.gz`/`.tar.zst`
+bundle and ≥40 % of its files are missing, fetch the bundle once and extract it
+with the system `tar` → fetch the remaining objects individually → verify every
+file against its listed hash before it lands → remove cached files that are no
+longer listed. Every step is verified; a hash mismatch is `Error::ChecksumMismatch`
+and nothing is placed.
+
+```rust
+use codec_corpus::{R2Corpus, PullOptions, PullMode};
+
+// Cold start on a big prefix: always take the bundle.
+let c = R2Corpus::pull_with_options(base, prefix, PullOptions::default().mode(PullMode::ForceBundle))?;
+
+// CI / WASM: never touch the network, use what a previous pull cached.
+let c = R2Corpus::pull_with_options(base, prefix, PullOptions::default().mode(PullMode::Offline))?;
+```
+
+Cache layout: `{cache}/codec-corpus/r2/{host}/{prefix…}/` with a `.list.json`
+copy of the index the directory was last synced against. Not version-gated —
+content is addressed by the hashes in the list.
+
+**Publishing a prefix** (maintainers): `ListIndex::from_dir(local_dir, prefix)`
+hashes a directory into the index; upload the files under `<prefix>` and the
+index as `<prefix-without-trailing-slash>.list`. The upload itself is not in this
+crate yet (tracked in [#2](https://github.com/imazen/codec-corpus/issues/2)).
+
 ### Custom cache location
 
 ```rust
