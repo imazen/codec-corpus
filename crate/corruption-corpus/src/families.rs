@@ -11,7 +11,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Rect, Region, Rgb8, Severity, blend, prng::SplitMix64};
+use super::{Rect, Region, Rgb8, Severity, blend, prng::SplitMix64, real_bugs::RealBugId};
 
 // ---------------------------------------------------------------------------
 // Family-specific variants
@@ -149,6 +149,10 @@ pub enum Family {
     Geometric(GeometricOp),
     /// 10. Wrong-background compositing.
     Composite(CompositeOp),
+    /// Gold-standard member: a documented real decoder/renderer bug
+    /// reproduced as its pixel pattern (imazen/codec-corpus#7). Acts on the
+    /// whole frame; the region is ignored, the severity blends the defect.
+    RealBug(RealBugId),
 }
 
 /// Geometric variant (family 9).
@@ -206,6 +210,7 @@ impl Family {
             Family::Aliasing => "aliasing".to_string(),
             Family::Geometric(op) => format!("geometric_{}", variant_slug(op)),
             Family::Composite(op) => format!("composite_{}", variant_slug(op)),
+            Family::RealBug(id) => format!("real_bug_{}", id.slug()),
         }
     }
 
@@ -222,16 +227,20 @@ impl Family {
             Family::Aliasing => "aliasing",
             Family::Geometric(_) => "geometric",
             Family::Composite(_) => "composite",
+            Family::RealBug(_) => "real_bug",
         }
     }
 
     /// Whether this family destroys structure so thoroughly that, at a large
     /// opaque region, the calibrated metric score is expected to go negative.
     pub fn is_structure_destroying(&self) -> bool {
-        matches!(
-            self,
-            Family::Channel(_) | Family::Block(_) | Family::Aliasing
-        )
+        match self {
+            Family::RealBug(id) => id.info().structure_destroying,
+            _ => matches!(
+                self,
+                Family::Channel(_) | Family::Block(_) | Family::Aliasing
+            ),
+        }
     }
 
     /// Apply this family to `img` in place.
@@ -249,6 +258,7 @@ impl Family {
             Family::Aliasing => apply_aliasing(img, rect, opacity),
             Family::Geometric(op) => apply_geometric(img, rect, *op, opacity),
             Family::Composite(op) => apply_composite(img, rect, *op, opacity),
+            Family::RealBug(id) => id.apply(img, opacity, rng),
         }
     }
 }

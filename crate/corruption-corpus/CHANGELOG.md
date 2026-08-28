@@ -22,6 +22,20 @@
   "defect". The `corruption_corpus` example uses it and reports the count. (#9)
 
 ### Added
+- **Real-bug gold-standard members** (#7): `real_bugs::RealBugId` — all 41
+  rows of the issue's mined-bug table (zenjpeg 10, zenwebp 11, zengif 2,
+  zenpng 3, zenavif 4, heic 5, imageflow 6), each carrying repo, commit/issue
+  reference, summary, pixel-defect pattern and family analogue
+  (`RealBugInfo`). `Family::RealBug(id)` applies each as a deterministic
+  synthetic pixel-pattern repro; `real_bug_catalog()` / `full_catalog()`
+  expose them and `manifest_for_reference()` now emits them with
+  `source: real-bug:<repo>#<ref>` after the synthetic sweep. The example
+  includes them by default (`--no-real-bugs`, `--real-bugs-only`). Tests pin
+  the row count per repo, that every repro changes pixels on textured content
+  (no identity "defects", #9), determinism, the off-by-one bugs staying
+  within ±1, several exact patterns, and tiny-image safety. These are pattern
+  repros, not recovered buggy-decoder outputs (that needs pre-fix checkouts
+  of the sibling repos).
 - `references` module: selects the ≥ 5 content classes × ≥ 10 references
   sweep set from the public imazen-26 corpus manifests checked into this repo
   (`content_class_for_category` folds the 21 imazen-26 categories into the

@@ -49,6 +49,10 @@ struct Args {
     refs_tsv: Option<PathBuf>,
     per_class: usize,
     refs_dir: Option<PathBuf>,
+    /// Drop the real-bug gold-standard members (synthetic families only).
+    no_real_bugs: bool,
+    /// Emit only the real-bug gold-standard members.
+    real_bugs_only: bool,
 }
 
 /// Select references from an imazen-26 manifest and download them (skipping
@@ -166,6 +170,8 @@ fn parse_args() -> Args {
     let mut refs_tsv = None;
     let mut per_class = 10usize;
     let mut refs_dir = None;
+    let mut no_real_bugs = false;
+    let mut real_bugs_only = false;
 
     // A reference is described by a `--ref` followed (in any order) by its
     // `--ref-id` and `--class`. We accumulate the in-progress reference and
@@ -212,6 +218,8 @@ fn parse_args() -> Args {
             "--refs-tsv" => refs_tsv = it.next().map(PathBuf::from),
             "--per-class" => per_class = it.next().and_then(|s| s.parse().ok()).unwrap_or(10),
             "--refs-dir" => refs_dir = it.next().map(PathBuf::from),
+            "--no-real-bugs" => no_real_bugs = true,
+            "--real-bugs-only" => real_bugs_only = true,
             "--help" | "-h" => {
                 print_help();
                 std::process::exit(0);
@@ -241,6 +249,8 @@ fn parse_args() -> Args {
         refs_tsv,
         per_class,
         refs_dir,
+        no_real_bugs,
+        real_bugs_only,
     }
 }
 
@@ -260,6 +270,8 @@ fn print_help() {
            --family <name>     only emit entries whose family contains <name>\n\
            --stats             print per-entry changed-pixel count + luma/chroma RMSE\n\
                                vs the reference (works with --manifest-only)\n\
+           --no-real-bugs      synthetic families only (drop the real-bug rows)\n\
+           --real-bugs-only    only the real-bug gold-standard rows\n\
          \n\
          Reference set from the imazen-26 manifest (instead of / besides --ref):\n\
            --refs-tsv <path>   e.g. ../imazen-26/manifests/train.tsv; picks\n\
@@ -330,6 +342,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let dropped_identity = catalog_len - entries.len();
         if let Some(filter) = &args.family_filter {
             entries.retain(|e| e.params.family.slug().contains(filter.as_str()));
+        }
+        if args.no_real_bugs {
+            entries.retain(|e| matches!(e.source, corruption_corpus::EntrySource::Synthetic));
+        }
+        if args.real_bugs_only {
+            entries.retain(|e| matches!(e.source, corruption_corpus::EntrySource::RealBug { .. }));
         }
 
         if args.stats {

@@ -107,8 +107,27 @@ A test pins the fold against the checked-in manifest, so every class has at
 least ten selectable references and a newly added category cannot go
 unclassified silently.
 
-Real-bug reproductions of historical decoder/renderer defects are tracked
-separately; the manifest's `source` field reserves a `real_bug` slot for them.
+### Gold-standard members: real historical bugs
+
+`real_bugs::RealBugId` enumerates every row of the issue's table of mined,
+shipped wrong-pixel bugs — 41 across zenjpeg (10), zenwebp (11), zengif (2),
+zenpng (3), zenavif (4), heic (5) and imageflow (6) — each with its repo,
+commit/issue reference, one-line summary, the pixel-defect pattern, and the
+synthetic family it is the real-world analogue of. `Family::RealBug(id)` applies
+the bug as a deterministic **synthetic pixel-pattern repro** on any reference
+(a plane permutation for the XYB block-order bug, a `w*3`-stride write replayed
+over a 4-byte canvas for the WebP dispose bug, `>>8` versus rounding for the
+PNG depth-reduction bug, the PQ EOTF pushed through `linear_to_srgb` for the
+AVIF HDR bug, …). `real_bug_catalog()` lists them (whole frame, opaque — a real
+bug is its own extent and magnitude), `full_catalog()` appends them to the
+synthetic sweep, and `manifest_for_reference()` emits them with
+`source: real-bug:<repo>#<ref>` so evaluators can separate the two populations.
+The example includes them by default (`--no-real-bugs` / `--real-bugs-only`).
+
+What they are **not**: recovered outputs of the buggy decoders themselves.
+Recovering those means checking out and building the pre-fix commit of each
+sibling repository, which this crate does not depend on; the repros are true to
+the documented *pattern* of each bug, not bit-exact to its output.
 
 ## License
 
