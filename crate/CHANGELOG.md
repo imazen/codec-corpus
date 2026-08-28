@@ -25,6 +25,24 @@
   `pull("fuzz/")` fetches everything below — merging child files into
   `R2Corpus::list()` as `child/rel`. `PullOptions::recursive(false)` pulls a
   node's own files only. Offline mode walks the cached tree the same way.
+- **`R2Corpus::push`** (#2, authenticated push): publishes a local directory
+  as a prefix — hashes it, diffs against the remote `.list`, uploads only
+  new/changed objects (`PushOptions::parallelism`, default 4) via an `aws s3
+  cp --endpoint-url` shell-out (no compiled-in S3 client; credentials go in
+  the subprocess environment, never on the command line), regenerates the
+  bundle with the system `tar` per `Rebundle::{Auto{max_deltas},Always,Never}`
+  (`BundleFormat::TarZst` degrading to `.tar.gz`/`.tar` when the tools are
+  missing), uploads the `.list` last, and registers the prefix as a child in
+  every ancestor `.list`. `PushTarget` (`from_env` / `load` / `save` — the
+  `r2-corpus login` file, 0600) names the endpoint, bucket, public base URL
+  and optional keys. `PushOptions::dry_run` and the credential-free
+  `R2Corpus::diff` report the plan (`PushReport`) without uploading;
+  `R2Corpus::fetch_list` reads a published `.list`. Tests drive the whole
+  algorithm against an on-disk fake bucket (first push + ancestor
+  registration + pull-back through the real pull path, incremental deltas
+  with a stale bundle, auto-rebundle threshold with a real `tar` round trip,
+  dry run, bad inputs); the live `aws` upload path is exercised only by
+  `aws_cp_args` unit tests.
 - New sibling workspace crate [`corruption-corpus`](corruption-corpus/README.md): the deterministic structural-corruption generator for zensim negative-tail validation (#7), landed on `main` from PR #8. It is a separate package — `codec-corpus` itself gains no new dependencies or API.
 
 ### Fixed

@@ -148,10 +148,37 @@ Cache layout: `{cache}/codec-corpus/r2/{host}/{prefix…}/` with a `.list.json`
 copy of the index the directory was last synced against. Not version-gated —
 content is addressed by the hashes in the list.
 
-**Publishing a prefix** (maintainers): `ListIndex::from_dir(local_dir, prefix)`
-hashes a directory into the index; upload the files under `<prefix>` and the
-index as `<prefix-without-trailing-slash>.list`. The upload itself is not in this
-crate yet (tracked in [#2](https://github.com/imazen/codec-corpus/issues/2)).
+**Publishing a prefix** (maintainers): `R2Corpus::push(local_dir, prefix,
+&target, PushOptions)` hashes the directory, fetches the existing `.list`,
+uploads only new/changed files (4 at a time), regenerates the `.tar.zst`
+bundle when more than 100 files sit outside it (`Rebundle::Auto`; also
+`Always` / `Never`), uploads the `.list` last, and registers the prefix as a
+`child` in every ancestor's `.list` so subtree pulls find it. Uploads shell out
+to the `aws` CLI (`aws s3 cp --endpoint-url …`) — nothing is compiled in — and
+the bundle is built with the system `tar` (`--zstd`, else `zstd`, else
+`.tar.gz`). `PushTarget` carries the S3 endpoint, bucket, public base URL and
+optional credentials: `PushTarget::from_env()` reads `CODEC_CORPUS_R2_ENDPOINT`
+/ `CODEC_CORPUS_R2_BUCKET` / `CODEC_CORPUS_R2_BASE_URL` + `AWS_ACCESS_KEY_ID` /
+`AWS_SECRET_ACCESS_KEY` (or `R2_*`); `PushTarget::load()` also reads the file
+`r2-corpus login` saves (`{config_dir}/codec-corpus/r2-push.json`, mode 0600).
+`PushOptions::dry_run(true)` — or `R2Corpus::diff(local_dir, base_url, prefix, …)`,
+which needs no credentials — reports the plan without uploading.
+
+```rust
+use codec_corpus::{R2Corpus, PushOptions, PushTarget, Rebundle};
+
+let target = PushTarget::load()?;                       // env or `r2-corpus login`
+let report = R2Corpus::push(
+    std::path::Path::new("fuzz/corpus/fuzz_decode"),
+    "fuzz/zentiff/fuzz_decode/",
+    &target,
+    PushOptions::default().rebundle(Rebundle::Always),  // fresh .tar.zst
+)?;
+println!("{} uploaded, {} unchanged, {} removed", report.uploaded.len(), report.unchanged, report.removed.len());
+```
+
+Objects that drop out of the list are left behind unlisted (pull never sees
+them); a bundle that predates later deltas keeps serving its unchanged members.
 
 ### Custom cache location
 

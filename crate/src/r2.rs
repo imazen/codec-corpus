@@ -661,16 +661,29 @@ fn fetch_objects(
         place_verified(&tmp, &dest, rel, entry)
     };
 
-    // wasm32 has no threads to spawn; a single worker is also the
-    // deterministic path tests use to pin error ordering.
+    run_parallel(missing, parallelism, |rel| fetch_one(rel))
+}
+
+/// Run `f` over `items` on up to `workers` threads. The first failure stops
+/// the remaining work (items not yet started are skipped) and is returned.
+/// `workers <= 1` — and always on `wasm32`, which has no threads to spawn —
+/// runs sequentially in order.
+pub(crate) fn run_parallel<T: Sync>(
+    items: &[T],
+    workers: usize,
+    f: impl Fn(&T) -> Result<(), Error> + Sync,
+) -> Result<(), Error> {
+    if items.is_empty() {
+        return Ok(());
+    }
     let workers = if cfg!(target_arch = "wasm32") {
         1
     } else {
-        parallelism.clamp(1, missing.len())
+        workers.clamp(1, items.len())
     };
     if workers == 1 {
-        for rel in missing {
-            fetch_one(rel)?;
+        for item in items {
+            f(item)?;
         }
         return Ok(());
     }
@@ -687,16 +700,16 @@ fn fetch_objects(
                         *n += 1;
                         i
                     };
-                    if i >= missing.len() {
+                    if i >= items.len() {
                         return;
                     }
                     if failure.lock().unwrap_or_else(|p| p.into_inner()).is_some() {
                         return;
                     }
-                    if let Err(e) = fetch_one(missing[i]) {
-                        let mut f = failure.lock().unwrap_or_else(|p| p.into_inner());
-                        if f.is_none() {
-                            *f = Some(e);
+                    if let Err(e) = f(&items[i]) {
+                        let mut slot = failure.lock().unwrap_or_else(|p| p.into_inner());
+                        if slot.is_none() {
+                            *slot = Some(e);
                         }
                         return;
                     }
@@ -912,7 +925,7 @@ pub(crate) fn normalize_prefix(prefix: &str) -> Result<String, Error> {
 }
 
 /// Reject absolute paths, `..`, empty components, and backslashes.
-fn validate_rel_path(rel: &str) -> Result<(), Error> {
+pub(crate) fn validate_rel_path(rel: &str) -> Result<(), Error> {
     let bad = rel.is_empty()
         || rel.starts_with('/')
         || rel.contains('\\')
@@ -974,7 +987,7 @@ pub(crate) fn cache_dir_for(cache_base: &Path, base_url: &str, prefix: &str) -> 
     dir
 }
 
-fn join_rel(dir: &Path, rel: &str) -> PathBuf {
+pub(crate) fn join_rel(dir: &Path, rel: &str) -> PathBuf {
     let mut p = dir.to_path_buf();
     for comp in rel.split('/') {
         p.push(comp);
@@ -989,7 +1002,7 @@ fn default_cache_base() -> Result<PathBuf, Error> {
     dirs::cache_dir().ok_or(Error::NoCacheDir)
 }
 
-fn temp_path(dir: &Path, tag: &str) -> PathBuf {
+pub(crate) fn temp_path(dir: &Path, tag: &str) -> PathBuf {
     // pid + a process-wide counter: unique across concurrent worker threads
     // (a timestamp alone can collide within the clock's resolution).
     static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -1000,7 +1013,7 @@ fn temp_path(dir: &Path, tag: &str) -> PathBuf {
 
 /// Coarse RFC 3339 UTC timestamp without a date library (days since epoch
 /// → civil date via the standard algorithm).
-fn rfc3339_now() -> String {
+pub(crate) fn rfc3339_now() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

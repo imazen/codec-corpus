@@ -71,6 +71,7 @@
 
 mod download;
 pub mod r2;
+mod r2_push;
 mod registry;
 mod sha256;
 
@@ -78,6 +79,7 @@ pub use r2::{
     BundleInfo, DEFAULT_PARALLELISM, DEFAULT_R2_BASE_URL, FileEntry, LIST_VERSION, ListIndex,
     PullMode, PullOptions, R2Corpus,
 };
+pub use r2_push::{BundleFormat, PushOptions, PushReport, PushTarget, Rebundle};
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
