@@ -119,10 +119,17 @@ for entry in std::fs::read_dir(seeds.path())? {
 How a pull works: fetch `<prefix>.list` (one small request) → diff the local
 cache by size + SHA-256 → if the prefix has a frozen `.tar`/`.tar.gz`/`.tar.zst`
 bundle and ≥40 % of its files are missing, fetch the bundle once and extract it
-with the system `tar` → fetch the remaining objects individually → verify every
-file against its listed hash before it lands → remove cached files that are no
-longer listed. Every step is verified; a hash mismatch is `Error::ChecksumMismatch`
+with the system `tar` → fetch the remaining objects individually, 8 at a time
+→ verify every file against its listed hash before it lands → remove cached
+files that are no longer listed → recurse into any child prefixes the list
+names. Every step is verified; a hash mismatch is `Error::ChecksumMismatch`
 and nothing is placed.
+
+Prefixes are hierarchical: a `.list` may name `children` (sub-prefixes with
+their own `.list`), so `pull("fuzz/zentiff/")` fetches every leaf under it and
+`pull("fuzz/")` fetches everything. The returned handle's `list()` is the
+merged view (child files keyed `child/rel`); each child is also cached as its
+own prefix and can be pulled directly.
 
 ```rust
 use codec_corpus::{R2Corpus, PullOptions, PullMode};
@@ -132,6 +139,9 @@ let c = R2Corpus::pull_with_options(base, prefix, PullOptions::default().mode(Pu
 
 // CI / WASM: never touch the network, use what a previous pull cached.
 let c = R2Corpus::pull_with_options(base, prefix, PullOptions::default().mode(PullMode::Offline))?;
+
+// Fewer concurrent connections; this node's own files only (no children).
+let c = R2Corpus::pull_with_options(base, prefix, PullOptions::default().parallelism(2).recursive(false))?;
 ```
 
 Cache layout: `{cache}/codec-corpus/r2/{host}/{prefix…}/` with a `.list.json`

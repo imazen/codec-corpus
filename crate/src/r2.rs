@@ -28,10 +28,16 @@
 //! 2. Diff against the local cache by size + SHA-256.
 //! 3. If a bundle exists and enough of its files are missing (default: 40 %),
 //!    download it once and extract with the system `tar`.
-//! 4. Fetch whatever is still missing as individual objects; every file is
-//!    verified against its listed SHA-256 before it lands in place.
+//! 4. Fetch whatever is still missing as individual objects, several at a
+//!    time ([`PullOptions::parallelism`]); every file is verified against its
+//!    listed SHA-256 before it lands in place.
 //! 5. Files in the cache dir that are no longer listed are removed, so the
 //!    directory mirrors the remote prefix.
+//! 6. If the `.list` names child prefixes ([`ListIndex::children`]), each
+//!    child is pulled the same way into a sub-directory, so
+//!    `pull("fuzz/zentiff/")` fetches every leaf under it and `pull("fuzz/")`
+//!    fetches everything. The returned [`R2Corpus::list`] is the merged view
+//!    (child files keyed `child/rel`).
 //!
 //! Downloads shell out to `curl`/`wget`/`powershell` like the rest of the
 //! crate; nothing is compiled in. On `wasm32` only [`PullMode::Offline`] works
@@ -39,6 +45,8 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -102,6 +110,12 @@ pub struct ListIndex {
     pub bundle: Option<BundleInfo>,
     /// Every file under the prefix, keyed by relative path.
     pub files: BTreeMap<String, FileEntry>,
+    /// Child prefixes (single path components, no `/`) that have their own
+    /// `.list`. `pull` recurses into them; a push registers its leaf here.
+    /// A node may have both `files` and `children`, but no file may live
+    /// under a child's name.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<String>,
 }
 
 impl ListIndex {
@@ -115,10 +129,57 @@ impl ListIndex {
                 list.version
             )));
         }
-        for path in list.files.keys() {
+        list.validate()?;
+        Ok(list)
+    }
+
+    /// Check every file path and child name for safety and mutual
+    /// consistency (what [`ListIndex::parse`] enforces on input and a push
+    /// enforces on output).
+    pub fn validate(&self) -> Result<(), Error> {
+        for path in self.files.keys() {
             validate_rel_path(path)?;
         }
-        Ok(list)
+        let mut seen = std::collections::BTreeSet::new();
+        for child in &self.children {
+            validate_rel_path(child)?;
+            if child.contains('/') {
+                return Err(Error::ListParse(format!(
+                    "child prefix '{child}' must be a single path component"
+                )));
+            }
+            if !seen.insert(child.as_str()) {
+                return Err(Error::ListParse(format!(
+                    "duplicate child prefix '{child}'"
+                )));
+            }
+            let under = format!("{child}/");
+            if self
+                .files
+                .keys()
+                .any(|f| f == child || f.starts_with(&under))
+            {
+                return Err(Error::ListParse(format!(
+                    "file entries collide with child prefix '{child}'"
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    /// Register `child` as a sub-prefix of this node (idempotent, keeps the
+    /// list sorted). Fails if the name is unsafe or collides with a file.
+    pub fn add_child(&mut self, child: &str) -> Result<(), Error> {
+        let child = child.trim_matches('/');
+        if !self.children.iter().any(|c| c == child) {
+            self.children.push(child.to_string());
+            self.children.sort();
+        }
+        if let Err(e) = self.validate() {
+            self.children.retain(|c| c != child);
+            return Err(e);
+        }
+        Ok(())
     }
 
     /// Serialize to pretty JSON.
@@ -176,6 +237,20 @@ impl ListIndex {
             generated_at: rfc3339_now(),
             bundle: None,
             files,
+            children: Vec::new(),
+        })
+    }
+
+    /// An empty node list for `prefix` (no files, no bundle) — the shape a
+    /// directory-only prefix such as `fuzz/` has before children are added.
+    pub fn empty(prefix: &str) -> Result<Self, Error> {
+        Ok(Self {
+            version: LIST_VERSION,
+            prefix: normalize_prefix(prefix)?,
+            generated_at: rfc3339_now(),
+            bundle: None,
+            files: BTreeMap::new(),
+            children: Vec::new(),
         })
     }
 
@@ -225,7 +300,12 @@ pub struct PullOptions {
     cache_root: Option<PathBuf>,
     bundle_threshold: f32,
     prune: bool,
+    parallelism: usize,
+    recursive: bool,
 }
+
+/// Default number of concurrent individual-object fetches.
+pub const DEFAULT_PARALLELISM: usize = 8;
 
 impl Default for PullOptions {
     fn default() -> Self {
@@ -234,6 +314,8 @@ impl Default for PullOptions {
             cache_root: None,
             bundle_threshold: 0.4,
             prune: true,
+            parallelism: DEFAULT_PARALLELISM,
+            recursive: true,
         }
     }
 }
@@ -266,6 +348,22 @@ impl PullOptions {
         self.prune = prune;
         self
     }
+
+    /// How many individual objects to fetch concurrently (default
+    /// [`DEFAULT_PARALLELISM`]; `0` and `1` both mean sequential). Each fetch
+    /// is its own `curl`/`wget` process, so this is also the number of
+    /// concurrent connections.
+    pub fn parallelism(mut self, n: usize) -> Self {
+        self.parallelism = n.max(1);
+        self
+    }
+
+    /// Whether to pull child prefixes named in the `.list` (default `true`).
+    /// With `false` only the node's own files are synced.
+    pub fn recursive(mut self, recursive: bool) -> Self {
+        self.recursive = recursive;
+        self
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -295,8 +393,9 @@ pub struct R2Corpus {
 }
 
 /// Something that fetches `url` into the file at `dest`. The real one is the
-/// crate's `curl`/`wget`/`powershell` chain; tests inject a local copier.
-pub(crate) type Fetcher<'a> = &'a dyn Fn(&str, &Path) -> Result<(), Error>;
+/// crate's `curl`/`wget`/`powershell` chain; tests inject a local copier. It
+/// is called from several threads at once when fetching individual objects.
+pub(crate) type Fetcher<'a> = &'a (dyn Fn(&str, &Path) -> Result<(), Error> + Sync);
 
 impl R2Corpus {
     /// Pull `prefix` from `base_url` (anonymous HTTP GETs) into the cache and
@@ -336,7 +435,10 @@ impl R2Corpus {
         &self.dir
     }
 
-    /// The `.list` this directory was synced against.
+    /// The `.list` this directory was synced against. When the prefix has
+    /// child prefixes (and the pull was recursive) this is the merged view:
+    /// the node's own files plus every child's files keyed `child/rel`, with
+    /// the node's own `bundle` and `children`.
     pub fn list(&self) -> &ListIndex {
         &self.list
     }
@@ -400,7 +502,7 @@ fn sync_prefix(
     let cached_list_path = dir.join(CACHED_LIST_NAME);
 
     // 1. The list.
-    let list = if options.mode == PullMode::Offline {
+    let mut list = if options.mode == PullMode::Offline {
         let text =
             std::fs::read_to_string(&cached_list_path).map_err(|_| Error::NetworkUnavailable {
                 dataset: prefix.to_string(),
@@ -445,6 +547,9 @@ fn sync_prefix(
                 path: format!("{prefix}{first} (offline; {} files missing)", missing.len()),
             });
         }
+        if options.recursive {
+            sync_children(base_url, prefix, dir, &mut list, options, fetch)?;
+        }
         return Ok(list);
     }
 
@@ -470,8 +575,73 @@ fn sync_prefix(
     }
 
     // 4. Individual objects.
-    for rel in &missing {
-        let entry = &list.files[*rel];
+    fetch_objects(
+        base_url,
+        prefix,
+        dir,
+        &list,
+        &missing,
+        options.parallelism,
+        fetch,
+    )?;
+
+    // 5. Prune + record the list we now match.
+    if options.prune {
+        prune_unlisted(dir, dir, &list)?;
+    }
+    let tmp = temp_path(dir, "list");
+    std::fs::write(&tmp, list.to_json())?;
+    std::fs::rename(&tmp, &cached_list_path)?;
+
+    // 6. Children.
+    if options.recursive {
+        sync_children(base_url, prefix, dir, &mut list, options, fetch)?;
+    }
+    Ok(list)
+}
+
+/// Pull every child prefix named in `list` into `dir/<child>/` and fold its
+/// files into `list` as `child/rel` (the merged view).
+fn sync_children(
+    base_url: &str,
+    prefix: &str,
+    dir: &Path,
+    list: &mut ListIndex,
+    options: &PullOptions,
+    fetch: Fetcher<'_>,
+) -> Result<(), Error> {
+    let children = list.children.clone();
+    for child in &children {
+        let child_prefix = format!("{prefix}{child}/");
+        let child_dir = dir.join(child);
+        std::fs::create_dir_all(&child_dir)?;
+        let child_list = with_dir_lock(&child_dir, || {
+            sync_prefix(base_url, &child_prefix, &child_dir, options, fetch)
+        })?;
+        for (rel, entry) in child_list.files {
+            list.files.insert(format!("{child}/{rel}"), entry);
+        }
+    }
+    Ok(())
+}
+
+/// Fetch `missing` objects into place, `parallelism` at a time. The first
+/// failure stops the remaining work and is returned; files already placed
+/// stay (they were verified), temp files are cleaned up.
+fn fetch_objects(
+    base_url: &str,
+    prefix: &str,
+    dir: &Path,
+    list: &ListIndex,
+    missing: &[&str],
+    parallelism: usize,
+    fetch: Fetcher<'_>,
+) -> Result<(), Error> {
+    if missing.is_empty() {
+        return Ok(());
+    }
+    let fetch_one = |rel: &str| -> Result<(), Error> {
+        let entry = &list.files[rel];
         let dest = join_rel(dir, rel);
         if let Some(parent) = dest.parent() {
             std::fs::create_dir_all(parent)?;
@@ -488,17 +658,56 @@ fn sync_prefix(
                 },
             });
         }
-        place_verified(&tmp, &dest, rel, entry)?;
+        place_verified(&tmp, &dest, rel, entry)
+    };
+
+    // wasm32 has no threads to spawn; a single worker is also the
+    // deterministic path tests use to pin error ordering.
+    let workers = if cfg!(target_arch = "wasm32") {
+        1
+    } else {
+        parallelism.clamp(1, missing.len())
+    };
+    if workers == 1 {
+        for rel in missing {
+            fetch_one(rel)?;
+        }
+        return Ok(());
     }
 
-    // 5. Prune + record the list we now match.
-    if options.prune {
-        prune_unlisted(dir, dir, &list)?;
+    let next = Mutex::new(0usize);
+    let failure: Mutex<Option<Error>> = Mutex::new(None);
+    std::thread::scope(|scope| {
+        for _ in 0..workers {
+            scope.spawn(|| {
+                loop {
+                    let i = {
+                        let mut n = next.lock().unwrap_or_else(|p| p.into_inner());
+                        let i = *n;
+                        *n += 1;
+                        i
+                    };
+                    if i >= missing.len() {
+                        return;
+                    }
+                    if failure.lock().unwrap_or_else(|p| p.into_inner()).is_some() {
+                        return;
+                    }
+                    if let Err(e) = fetch_one(missing[i]) {
+                        let mut f = failure.lock().unwrap_or_else(|p| p.into_inner());
+                        if f.is_none() {
+                            *f = Some(e);
+                        }
+                        return;
+                    }
+                }
+            });
+        }
+    });
+    match failure.into_inner().unwrap_or_else(|p| p.into_inner()) {
+        Some(e) => Err(e),
+        None => Ok(()),
     }
-    let tmp = temp_path(dir, "list");
-    std::fs::write(&tmp, list.to_json())?;
-    std::fs::rename(&tmp, &cached_list_path)?;
-    Ok(list)
 }
 
 /// Download, verify, and extract the bundle, moving every listed
@@ -654,12 +863,16 @@ fn local_matches(path: &Path, entry: &FileEntry) -> bool {
 
 /// Remove regular files under `dir` that are not listed (hidden names at the
 /// root — `.list.json`, `.lock`, `.tmp-*` — are the crate's own and stay).
+/// Child-prefix directories are owned by their own sync and are skipped.
 fn prune_unlisted(root: &Path, dir: &Path, list: &ListIndex) -> Result<(), Error> {
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
         let name = entry.file_name();
         if dir == root && name.to_string_lossy().starts_with('.') {
+            continue;
+        }
+        if dir == root && path.is_dir() && list.children.iter().any(|c| **c == *name) {
             continue;
         }
         if path.is_dir() {
@@ -777,12 +990,12 @@ fn default_cache_base() -> Result<PathBuf, Error> {
 }
 
 fn temp_path(dir: &Path, tag: &str) -> PathBuf {
+    // pid + a process-wide counter: unique across concurrent worker threads
+    // (a timestamp alone can collide within the clock's resolution).
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
     let pid = std::process::id();
-    let ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    dir.join(format!(".tmp-{tag}-{pid}-{ts}"))
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    dir.join(format!(".tmp-{tag}-{pid}-{n}"))
 }
 
 /// Coarse RFC 3339 UTC timestamp without a date library (days since epoch
@@ -905,7 +1118,6 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     mod sync {
         use super::*;
-        use std::cell::RefCell;
 
         const BASE: &str = "https://fake.example";
         const PREFIX: &str = "fuzz/demo/seeds/";
@@ -914,7 +1126,7 @@ mod tests {
             root: PathBuf,
             remote: PathBuf,
             cache: PathBuf,
-            fetched: RefCell<Vec<String>>,
+            fetched: Mutex<Vec<String>>,
         }
 
         impl Fixture {
@@ -929,14 +1141,14 @@ mod tests {
                     root,
                     remote,
                     cache,
-                    fetched: RefCell::new(Vec::new()),
+                    fetched: Mutex::new(Vec::new()),
                 }
             }
 
             /// Map a URL under BASE to a file in the fake remote and copy it.
-            fn fetcher(&self) -> impl Fn(&str, &Path) -> Result<(), Error> + '_ {
+            fn fetcher(&self) -> impl Fn(&str, &Path) -> Result<(), Error> + Sync + '_ {
                 move |url: &str, dest: &Path| {
-                    self.fetched.borrow_mut().push(url.to_string());
+                    self.fetched.lock().unwrap().push(url.to_string());
                     let rel = url
                         .strip_prefix(&format!("{BASE}/"))
                         .expect("url under BASE");
@@ -953,14 +1165,19 @@ mod tests {
 
             fn fetched_count(&self, suffix: &str) -> usize {
                 self.fetched
-                    .borrow()
+                    .lock()
+                    .unwrap()
                     .iter()
                     .filter(|u| u.ends_with(suffix))
                     .count()
             }
 
+            fn fetched_total(&self) -> usize {
+                self.fetched.lock().unwrap().len()
+            }
+
             fn reset_log(&self) {
-                self.fetched.borrow_mut().clear();
+                self.fetched.lock().unwrap().clear();
             }
 
             fn put_object(&self, rel: &str, bytes: &[u8]) {
@@ -975,10 +1192,16 @@ mod tests {
             }
 
             fn put_list(&self, list: &ListIndex) {
+                self.put_list_at(PREFIX, list);
+            }
+
+            /// Serve `list` as the `.list` of an arbitrary prefix.
+            fn put_list_at(&self, prefix: &str, list: &ListIndex) {
                 let p = join_rel(
                     &self.remote,
-                    &format!("{}.list", PREFIX.trim_end_matches('/')),
+                    &format!("{}.list", prefix.trim_end_matches('/')),
                 );
+                std::fs::create_dir_all(p.parent().unwrap()).unwrap();
                 std::fs::write(p, list.to_json()).unwrap();
             }
 
@@ -987,8 +1210,12 @@ mod tests {
             }
 
             fn pull(&self, options: PullOptions) -> Result<R2Corpus, Error> {
+                self.pull_prefix(PREFIX, options)
+            }
+
+            fn pull_prefix(&self, prefix: &str, options: PullOptions) -> Result<R2Corpus, Error> {
                 let f = self.fetcher();
-                R2Corpus::pull_with_fetcher(BASE, PREFIX, options, &f)
+                R2Corpus::pull_with_fetcher(BASE, prefix, options, &f)
             }
 
             fn cleanup(self) {
@@ -1005,15 +1232,24 @@ mod tests {
         }
 
         fn list_with(files: &[(&str, &[u8], bool)], bundle: Option<BundleInfo>) -> ListIndex {
+            list_for(PREFIX, files, bundle)
+        }
+
+        fn list_for(
+            prefix: &str,
+            files: &[(&str, &[u8], bool)],
+            bundle: Option<BundleInfo>,
+        ) -> ListIndex {
             ListIndex {
                 version: LIST_VERSION,
-                prefix: PREFIX.to_string(),
+                prefix: prefix.to_string(),
                 generated_at: "2026-01-01T00:00:00Z".to_string(),
                 bundle,
                 files: files
                     .iter()
                     .map(|(p, b, ib)| (p.to_string(), entry(b, *ib)))
                     .collect(),
+                children: Vec::new(),
             }
         }
 
@@ -1249,7 +1485,7 @@ mod tests {
             // Offline with a complete cache succeeds without any fetch.
             fx.reset_log();
             let c = fx.pull(fx.options().mode(PullMode::Offline)).unwrap();
-            assert_eq!(fx.fetched.borrow().len(), 0);
+            assert_eq!(fx.fetched_total(), 0);
             assert_eq!(std::fs::read(c.file_path("a.bin")).unwrap(), b"a");
 
             // Offline with a missing file fails loudly.
@@ -1301,5 +1537,225 @@ mod tests {
             );
             fx.cleanup();
         }
+
+        #[test]
+        fn parallel_fetch_places_every_file_and_fails_fast_on_mismatch() {
+            let fx = Fixture::new("parallel");
+            let objects: Vec<(String, Vec<u8>)> = (0..60)
+                .map(|i| {
+                    (
+                        format!("d{}/obj{i}.bin", i % 4),
+                        format!("object {i} payload {}", "x".repeat(i)).into_bytes(),
+                    )
+                })
+                .collect();
+            for (rel, bytes) in &objects {
+                fx.put_object(rel, bytes);
+            }
+            let files: Vec<(&str, &[u8], bool)> = objects
+                .iter()
+                .map(|(r, b)| (r.as_str(), b.as_slice(), false))
+                .collect();
+            fx.put_list(&list_with(&files, None));
+
+            let corpus = fx.pull(fx.options().parallelism(8)).unwrap();
+            for (rel, bytes) in &objects {
+                assert_eq!(
+                    &std::fs::read(corpus.file_path(rel)).unwrap(),
+                    bytes,
+                    "{rel}"
+                );
+            }
+            assert_eq!(
+                fx.fetched_total(),
+                1 + objects.len(),
+                "every object fetched once"
+            );
+            let temps = std::fs::read_dir(corpus.path())
+                .unwrap()
+                .flatten()
+                .filter(|e| e.file_name().to_string_lossy().starts_with(".tmp-"))
+                .count();
+            assert_eq!(temps, 0, "no temp droppings after a parallel pull");
+
+            // Sequential (parallelism 1) and parallel produce identical trees.
+            let _ = std::fs::remove_dir_all(&fx.cache);
+            let seq = fx.pull(fx.options().parallelism(1)).unwrap();
+            assert_eq!(seq.list().files, corpus.list().files);
+            for (rel, bytes) in &objects {
+                assert_eq!(&std::fs::read(seq.file_path(rel)).unwrap(), bytes, "{rel}");
+            }
+
+            // One bad checksum among many: the pull fails with that file's
+            // mismatch, and that file is never placed.
+            let _ = std::fs::remove_dir_all(&fx.cache);
+            let mut list = list_with(&files, None);
+            list.files.get_mut("d2/obj42.bin").unwrap().sha256 = sha256::sha256_hex(b"wrong");
+            fx.put_list(&list);
+            let err = fx.pull(fx.options().parallelism(8)).unwrap_err();
+            assert!(
+                matches!(err, Error::ChecksumMismatch { ref path, .. } if path == "d2/obj42.bin"),
+                "{err}"
+            );
+            let dir = cache_dir_for(&fx.cache, BASE, PREFIX);
+            assert!(!join_rel(&dir, "d2/obj42.bin").exists());
+            assert!(
+                !dir.join(CACHED_LIST_NAME).exists(),
+                "failed pull must not record the list"
+            );
+            let temps = std::fs::read_dir(&dir)
+                .unwrap()
+                .flatten()
+                .filter(|e| e.file_name().to_string_lossy().starts_with(".tmp-"))
+                .count();
+            assert_eq!(temps, 0);
+            fx.cleanup();
+        }
+
+        #[test]
+        fn hierarchical_pull_recurses_into_children() {
+            let fx = Fixture::new("tree");
+            const ROOT: &str = "fuzz/tree/";
+            // fuzz/tree.list: one own file + two children.
+            let mut root = list_for(ROOT, &[("README", b"root readme", false)], None);
+            root.children = vec!["alpha".to_string(), "beta".to_string()];
+            fx.put_raw("fuzz/tree/README", b"root readme");
+            fx.put_list_at(ROOT, &root);
+            // fuzz/tree/alpha.list
+            fx.put_raw("fuzz/tree/alpha/a1.bin", b"alpha one");
+            fx.put_raw("fuzz/tree/alpha/sub/a2.bin", b"alpha two");
+            fx.put_list_at(
+                "fuzz/tree/alpha/",
+                &list_for(
+                    "fuzz/tree/alpha/",
+                    &[
+                        ("a1.bin", b"alpha one", false),
+                        ("sub/a2.bin", b"alpha two", false),
+                    ],
+                    None,
+                ),
+            );
+            // fuzz/tree/beta.list — itself a node with a grandchild.
+            let mut beta = list_for("fuzz/tree/beta/", &[], None);
+            beta.children = vec!["gamma".to_string()];
+            fx.put_list_at("fuzz/tree/beta/", &beta);
+            fx.put_raw("fuzz/tree/beta/gamma/g.bin", b"gamma");
+            fx.put_list_at(
+                "fuzz/tree/beta/gamma/",
+                &list_for("fuzz/tree/beta/gamma/", &[("g.bin", b"gamma", false)], None),
+            );
+
+            let corpus = fx.pull_prefix(ROOT, fx.options()).unwrap();
+            assert_eq!(
+                std::fs::read(corpus.file_path("README")).unwrap(),
+                b"root readme"
+            );
+            assert_eq!(
+                std::fs::read(corpus.file_path("alpha/a1.bin")).unwrap(),
+                b"alpha one"
+            );
+            assert_eq!(
+                std::fs::read(corpus.file_path("alpha/sub/a2.bin")).unwrap(),
+                b"alpha two"
+            );
+            assert_eq!(
+                std::fs::read(corpus.file_path("beta/gamma/g.bin")).unwrap(),
+                b"gamma"
+            );
+            // Merged view: every file keyed relative to the root prefix.
+            let keys: Vec<&str> = corpus.files().map(|(k, _)| k).collect();
+            assert_eq!(
+                keys,
+                [
+                    "README",
+                    "alpha/a1.bin",
+                    "alpha/sub/a2.bin",
+                    "beta/gamma/g.bin"
+                ]
+            );
+            assert_eq!(corpus.list().children, ["alpha", "beta"]);
+            assert_eq!(
+                fx.fetched_count(".list"),
+                4,
+                "root + alpha + beta + gamma lists"
+            );
+            // Each node caches its own list, so it can be pulled directly too.
+            assert!(corpus.path().join("alpha").join(CACHED_LIST_NAME).is_file());
+            assert!(
+                corpus
+                    .path()
+                    .join("beta")
+                    .join("gamma")
+                    .join(CACHED_LIST_NAME)
+                    .is_file()
+            );
+            let alpha = fx.pull_prefix("fuzz/tree/alpha/", fx.options()).unwrap();
+            assert_eq!(alpha.path(), corpus.path().join("alpha"));
+            assert_eq!(alpha.list().len(), 2);
+
+            // A second pull re-fetches only the four lists, and the root
+            // prune must not reach into the children's directories.
+            fx.reset_log();
+            fx.pull_prefix(ROOT, fx.options()).unwrap();
+            assert_eq!(fx.fetched_total(), 4);
+            assert!(corpus.file_path("alpha/sub/a2.bin").is_file());
+
+            // Offline works across the whole tree from the cached lists.
+            fx.reset_log();
+            let off = fx
+                .pull_prefix(ROOT, fx.options().mode(PullMode::Offline))
+                .unwrap();
+            assert_eq!(fx.fetched_total(), 0);
+            assert_eq!(off.list().len(), 4);
+
+            // recursive(false): own files only, no child list fetched.
+            fx.reset_log();
+            let shallow = fx.pull_prefix(ROOT, fx.options().recursive(false)).unwrap();
+            assert_eq!(shallow.list().len(), 1);
+            assert_eq!(fx.fetched_count(".list"), 1);
+
+            // A child whose .list is missing fails the pull loudly.
+            std::fs::remove_file(join_rel(&fx.remote, "fuzz/tree/beta/gamma.list")).unwrap();
+            std::fs::remove_dir_all(corpus.path().join("beta")).unwrap();
+            let err = fx.pull_prefix(ROOT, fx.options()).unwrap_err();
+            assert!(matches!(err, Error::NetworkUnavailable { .. }), "{err}");
+            fx.cleanup();
+        }
+    }
+
+    #[test]
+    fn children_are_validated() {
+        let mut list = ListIndex::empty("fuzz/").unwrap();
+        assert_eq!(list.prefix, "fuzz/");
+        assert!(list.is_empty());
+        list.add_child("zentiff").unwrap();
+        list.add_child("zentiff").unwrap();
+        list.add_child("apng").unwrap();
+        assert_eq!(list.children, ["apng", "zentiff"]);
+        assert!(list.add_child("a/b").is_err());
+        assert!(list.add_child("..").is_err());
+        assert_eq!(
+            list.children,
+            ["apng", "zentiff"],
+            "rejected child not kept"
+        );
+
+        let back = ListIndex::parse(&list.to_json()).unwrap();
+        assert_eq!(back, list);
+
+        let collide = r#"{"version":1,"prefix":"p/","generated_at":"","files":{"kid/x":{"size":1,"sha256":"a"}},"children":["kid"]}"#;
+        assert!(matches!(
+            ListIndex::parse(collide),
+            Err(Error::ListParse(_))
+        ));
+        let nested =
+            r#"{"version":1,"prefix":"p/","generated_at":"","files":{},"children":["a/b"]}"#;
+        assert!(matches!(ListIndex::parse(nested), Err(Error::ListParse(_))));
+        let dup =
+            r#"{"version":1,"prefix":"p/","generated_at":"","files":{},"children":["a","a"]}"#;
+        assert!(matches!(ListIndex::parse(dup), Err(Error::ListParse(_))));
+        // Old lists without the field still parse.
+        let old = r#"{"version":1,"prefix":"p/","generated_at":"","files":{}}"#;
+        assert!(ListIndex::parse(old).unwrap().children.is_empty());
     }
 }

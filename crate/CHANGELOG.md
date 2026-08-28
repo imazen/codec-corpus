@@ -16,6 +16,15 @@
   public `codec-corpus.r2.imazen.org` bucket.
 - `Error::ChecksumMismatch` and `Error::ListParse` (additive; `Error` is
   `#[non_exhaustive]`).
+- `R2Corpus` pull (#2): individual objects are fetched concurrently
+  (`PullOptions::parallelism`, default `DEFAULT_PARALLELISM` = 8, one
+  `curl`/`wget` process each; first failure stops the rest, verified files
+  stay, temp files are cleaned up). Hierarchical prefixes: a `.list` may name
+  `children` (validated single-component sub-prefixes; `ListIndex::add_child`,
+  `ListIndex::empty`, `ListIndex::validate`), and a pull recurses into them —
+  `pull("fuzz/")` fetches everything below — merging child files into
+  `R2Corpus::list()` as `child/rel`. `PullOptions::recursive(false)` pulls a
+  node's own files only. Offline mode walks the cached tree the same way.
 - New sibling workspace crate [`corruption-corpus`](corruption-corpus/README.md): the deterministic structural-corruption generator for zensim negative-tail validation (#7), landed on `main` from PR #8. It is a separate package — `codec-corpus` itself gains no new dependencies or API.
 
 ### Fixed

@@ -75,8 +75,8 @@ mod registry;
 mod sha256;
 
 pub use r2::{
-    BundleInfo, DEFAULT_R2_BASE_URL, FileEntry, LIST_VERSION, ListIndex, PullMode, PullOptions,
-    R2Corpus,
+    BundleInfo, DEFAULT_PARALLELISM, DEFAULT_R2_BASE_URL, FileEntry, LIST_VERSION, ListIndex,
+    PullMode, PullOptions, R2Corpus,
 };
 
 use std::path::{Path, PathBuf};
