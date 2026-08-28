@@ -1,5 +1,5 @@
 [workspace]
-members = ["corruption-corpus"]
+members = ["corruption-corpus", "r2-corpus"]
 
 [package]
 name = "codec-corpus"

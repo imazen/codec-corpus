@@ -43,6 +43,10 @@
   with a stale bundle, auto-rebundle threshold with a real `tar` round trip,
   dry run, bad inputs); the live `aws` upload path is exercised only by
   `aws_cp_args` unit tests.
+- New sibling workspace crate [`r2-corpus`](r2-corpus/README.md) (#2): the
+  CLI (`pull` / `push` / `list` / `diff` / `login` / `sync` +
+  `corpus-sync.toml`). Separate package — `codec-corpus` itself gains no
+  dependency.
 - New sibling workspace crate [`corruption-corpus`](corruption-corpus/README.md): the deterministic structural-corruption generator for zensim negative-tail validation (#7), landed on `main` from PR #8. It is a separate package — `codec-corpus` itself gains no new dependencies or API.
 
 ### Fixed

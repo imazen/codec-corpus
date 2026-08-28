@@ -1,0 +1,20 @@
+[package]
+name = "r2-corpus"
+version = "0.1.0"
+edition = "2024"
+description = "CLI for codec-corpus R2 prefixes: anonymous pull, authenticated push, list, diff, login, and corpus-sync.toml"
+license = "Apache-2.0"
+repository = "https://github.com/imazen/codec-corpus"
+readme = "README.md"
+keywords = ["codec", "test-data", "corpus", "r2", "cli"]
+categories = ["development-tools::testing", "command-line-utilities"]
+rust-version = "1.85"
+
+[[bin]]
+name = "r2-corpus"
+path = "src/main.rs"
+
+[dependencies]
+codec-corpus = { version = "1.1.0", path = ".." }
+serde = { version = "1", features = ["derive"] }
+toml = { version = "1.1.4", default-features = false, features = ["parse", "serde", "std"] }

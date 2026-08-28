@@ -180,6 +180,10 @@ println!("{} uploaded, {} unchanged, {} removed", report.uploaded.len(), report.
 Objects that drop out of the list are left behind unlisted (pull never sees
 them); a bundle that predates later deltas keeps serving its unchanged members.
 
+The same operations are available from the command line via the sibling
+[`r2-corpus`](r2-corpus/README.md) binary (`pull` / `push` / `list` / `diff` /
+`login` / `sync` with a per-project `corpus-sync.toml`).
+
 ### Custom cache location
 
 ```rust
