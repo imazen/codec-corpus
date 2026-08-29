@@ -49,6 +49,10 @@
   dependency.
 - New sibling workspace crate [`corruption-corpus`](corruption-corpus/README.md): the deterministic structural-corruption generator for zensim negative-tail validation (#7), landed on `main` from PR #8. It is a separate package — `codec-corpus` itself gains no new dependencies or API.
 
+### Changed
+- Refreshed `Cargo.lock` within the existing requirements (b66cb04). Unconstrained `cargo update` is safe here because this repo has no zen-family dependency anywhere in its graph, so every package in the lock is third-party. Twenty moved, including `libc` 0.2.182 → 0.2.189, `serde` 1.0.228 → 1.0.229, `serde_json` 1.0.149 → 1.0.151, `flate2` 1.1.9 → 1.1.10, `bitflags` 2.11.0 → 2.13.1, `syn` 2.0.117 → 3.0.4.
+- Requirements are now written as full `x.y.z` rather than truncated: `dirs` `"6"` → `"6.0.0"`, `serde` `"1"` → `"1.0.229"`, `serde_json` `"1"` → `"1.0.151"`, `fd-lock` `"4"` → `"4.0.4"`, across all three workspace members (0785871). The values are the versions the lock already resolved and the suite is tested against, so `Cargo.lock` is byte-identical after the edit. No dependency was behind — `cargo outdated` reports all up to date, and every direct requirement was cross-checked against the crates.io API.
+
 ### Fixed
 - `libjpeg-turbo-fuzz` now resolves to `libjpeg-turbo/seed-corpora` `afl-testcases`
   (bmp/gif/jpeg/targa seed trees). It previously pointed at
