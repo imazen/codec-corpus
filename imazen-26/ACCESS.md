@@ -1,3 +1,16 @@
+> **SUPERSEDED — this is a stale copy.** The imazen-26 corpus moved to
+> **https://github.com/imazen/imazen-26** on 2026-08-23 and the canonical
+> manifests, docs, and variant-set registry live there. This copy has since
+> diverged; do not rely on it.
+>
+> In particular, the render-URL pattern below is **wrong**: render names cannot
+> be derived from the corpus filename. The corpus name ends in a `_WxH` token
+> from the *stored* dimensions, while the render pass applied EXIF rotation and
+> named its output by the *rotated* dimensions — so for 196 of 2,160 images the
+> two numbers are transposed and an extension swap 404s. Take URLs from the
+> `png_v3_sdr_url` / `png_v3_hdr_url` columns of the canonical split manifests,
+> or from `variant-sets/png-v3-index.tsv` in the canonical repo.
+
 # imazen-26 — public access index
 
 Everything below is served over plain HTTPS from a public R2 bucket — no

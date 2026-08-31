@@ -100,6 +100,14 @@ For compression benchmarking, CID22 is one of the best choices available: it was
 
 ### imazen-26
 
+> **Moved.** imazen-26 now lives at **https://github.com/imazen/imazen-26** (since
+> 2026-08-23), which holds the canonical manifests, split, and variant-set
+> registry. The `imazen-26/` copy in this repo is a stale snapshot and has
+> diverged — use the canonical repo. Note especially that render URLs must be
+> read from its manifests or `variant-sets/png-v3-index.tsv`; they cannot be
+> derived from the corpus filename (EXIF-rotated originals transpose the `WxH`
+> token, which 404s for 196 of 2,160 images).
+
 **21-category real-world corpus** — 2,160 images / 5.9 GB spanning the hard cases codecs
 trip on: photographic noise, hard-edged vector graphics, bilevel scan texture, dense text,
 large flat regions. Mixes real photographs, stock photography, artwork reproductions,
